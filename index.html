@@ -20,6 +20,7 @@
           <a id="practice-link" href="#practice">Собери локальную сеть</a>
           <a id="ip-link" href="#ip">IP-МАСТЕР 3D</a>
           <a id="packet-link" href="#packet">Путешествие пакета</a>
+          <a id="routing-link" href="#routing">Маршрутизатор 3D</a>
         </nav>
       </div>
     </header>
@@ -49,12 +50,18 @@
         <p>Выберите два ПК, чтобы проследить путь кадра по кабелям и увидеть работу коммутатора.</p>
       </div>
 
+      <div class="intro" id="routing-intro" hidden>
+        <p class="eyebrow"><span></span> УРОВЕНЬ 4 <b></b> ДВЕ ПОДСЕТИ</p>
+        <h1>Маршрутизатор 3D<span>.</span></h1>
+        <p>Соедините две локальные сети, настройте шлюзы и проследите путь пакета.</p>
+      </div>
+
       <div class="workspace">
         <section class="scene-card" aria-labelledby="scene-heading">
           <div class="viewport" id="viewport">
             <div class="scene-header">
               <h2 id="scene-heading"><span data-icon="box"></span> 3D-лаборатория</h2>
-              <span class="scene-tag"><i></i> Локальная сеть</span>
+              <span class="scene-tag"><i></i><span id="scene-network-label">Локальная сеть</span></span>
             </div>
             <div id="render-host" class="render-host"></div>
             <div id="markers" class="markers"></div>
@@ -174,6 +181,47 @@
             <ol id="packet-log" role="log" aria-label="События передачи" tabindex="0"></ol>
           </details>
         </aside>
+
+        <aside class="device-panel packet-panel routing-panel" id="routing-panel" aria-labelledby="routing-heading" hidden>
+          <div class="panel-heading">
+            <span class="panel-icon" data-icon="network"></span>
+            <div><h2 id="routing-heading">Найди маршрут</h2><p>192.168.1.0/24 · 192.168.2.0/24</p></div>
+          </div>
+          <div id="routing-devices" class="routing-devices" role="group" aria-label="Устройства"></div>
+          <section class="ip-config" aria-labelledby="routing-device-title">
+            <h3 id="routing-device-title"></h3>
+            <p id="routing-device-info"></p>
+            <form id="routing-config" hidden></form>
+            <p id="routing-saved" role="status"></p>
+          </section>
+          <details class="routing-section" open>
+            <summary>Кабели к маршрутизатору</summary>
+            <div class="practice-grid">
+              <label for="routing-switch">Коммутатор <select id="routing-switch"></select></label>
+              <label for="routing-interface">Интерфейс маршрутизатора <select id="routing-interface"></select></label>
+            </div>
+            <button type="button" id="routing-connect">Подключить кабель</button>
+            <ul id="routing-links" class="practice-links" aria-label="Подключённые кабели"></ul>
+            <p id="routing-wire-note" role="status"></p>
+          </details>
+          <details class="routing-section" open>
+            <summary>Передача пакета</summary>
+            <div class="practice-grid">
+              <label for="routing-from">Отправитель <select id="routing-from"></select></label>
+              <label for="routing-to">Получатель <select id="routing-to"></select></label>
+            </div>
+            <button type="button" id="routing-send">Отправить пакет</button>
+            <div class="practice-grid packet-actions">
+              <button type="button" id="routing-pause">Пауза</button>
+              <button type="button" id="routing-repeat">Повторить</button>
+            </div>
+            <p id="routing-status" role="status"></p>
+            <details class="routing-section" open>
+              <summary>Журнал маршрута</summary>
+              <ol id="routing-log" role="log" aria-label="События маршрутизации" tabindex="0"></ol>
+            </details>
+          </details>
+        </aside>
       </div>
 
       <section class="device-panel packet-tasks" id="packet-tasks" aria-labelledby="packet-tasks-heading" hidden>
@@ -183,6 +231,38 @@
             <h3>1. Отправьте данные от ПК 01 к ПК 03</h3>
             <p>Выберите эту пару в панели передачи и дождитесь доставки.</p>
             <p id="packet-task-one" role="status"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="device-panel packet-tasks" id="routing-tasks" aria-labelledby="routing-tasks-heading" hidden>
+        <h2 id="routing-tasks-heading">Практические задания</h2>
+        <div class="routing-task-grid">
+          <form data-route-quiz="subnet">
+            <label>1. Какой ПК в одной подсети с ПК 01?
+              <select required><option value="">Выберите ПК</option><option value="02">ПК 02</option><option value="03">ПК 03</option><option value="04">ПК 04</option></select>
+            </label>
+            <button>Проверить ответ</button><p role="status"></p>
+          </form>
+          <div class="packet-task">
+            <h3>2. Подключите маршрутизатор к двум коммутаторам</h3>
+            <button type="button" id="routing-check-wires">Проверить кабели</button><p role="status"></p>
+          </div>
+          <div class="packet-task">
+            <h3>3. Настройте шлюз на каждом из четырёх ПК</h3>
+            <button type="button" id="routing-check-gateways">Проверить адреса и шлюзы</button><p role="status"></p>
+          </div>
+          <form data-route-quiz="path">
+            <label>4. Каков путь от ПК 01 к ПК 03?
+              <select required><option value="">Выберите путь</option><option value="direct">ПК 01 → коммутатор A → ПК 03</option><option value="router">ПК 01 → A → маршрутизатор → B → ПК 03</option><option value="reverse">ПК 01 → B → маршрутизатор → A → ПК 03</option></select>
+            </label>
+            <button>Проверить ответ</button><p role="status"></p>
+          </form>
+          <div class="packet-task">
+            <h3>5. Восстановите связь после сбоя</h3>
+            <p>Внесите учебную ошибку, отправьте пакет от ПК 01 к ПК 03 и исправьте причину из журнала.</p>
+            <button type="button" id="routing-fault">Внести учебную ошибку</button>
+            <p id="routing-fault-note" role="status"></p>
           </div>
         </div>
       </section>
