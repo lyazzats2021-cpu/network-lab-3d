@@ -4,6 +4,8 @@ import { devices } from './devices.js';
 import { createLab, makePracticeCable } from './lab.js';
 import { createPractice } from './practice.js';
 import { createIpPractice } from './ip-practice.js';
+import { createPacketJourney } from './packet-journey.js';
+import { createPacketVisual } from './packet-visual.js';
 import { computers, portLabel } from './topology.js';
 import './style.css';
 
@@ -53,6 +55,7 @@ pcPortMarker.textContent = 'RJ‑45';
 markers.append(pcPortMarker);
 let mode = 'overview';
 let ipState;
+let packetSender;
 let practiceState;
 let selection;
 let viewer;
@@ -91,9 +94,20 @@ const ipPractice = createIpPractice(ipPanel, () => practiceState.links, state =>
   refreshPracticeScene();
 }, path => viewer?.showProbe(path));
 
+const packetTasks = document.querySelector('#packet-tasks');
+const packetJourney = createPacketJourney(
+  document.querySelector('#packet-panel'), packetTasks,
+  ipPractice.getSaved, () => practiceState.links,
+  (step, progress, reduced) => viewer?.showPacket(step, progress, reduced),
+  from => {
+    packetSender = from;
+    refreshPracticeScene();
+  },
+);
+
 function refreshPracticeScene() {
   const ip = mode === 'ip';
-  const selected = ip ? ipState.selected : practiceState.selected;
+  const selected = mode === 'packet' ? packetSender : ip ? ipState.selected : practiceState.selected;
   for (const [id, label] of practiceLabels) {
     const status = ip ? ipState.statuses.get(id) : null;
     label.setAttribute('aria-pressed', String(id === selected));
@@ -110,7 +124,7 @@ function refreshPracticeScene() {
   }
   viewer?.updatePractice({
     selected,
-    source: ip ? null : practiceState.source,
+    source: mode === 'practice' ? practiceState.source : null,
     links: practiceState.links,
   });
 }
@@ -130,6 +144,7 @@ pcPortMarker.addEventListener('click', () => practice.selectPort(practiceState.s
 
 function selectPracticeDevice(id) {
   if (mode === 'ip') ipPractice.selectDevice(id);
+  else if (mode === 'packet') packetJourney.chooseSender(id);
   else practice.selectDevice(id);
 }
 
@@ -178,6 +193,7 @@ function initViewer() {
   let practiceView;
   let active = overview;
   const cables = new Map();
+  let packetVisual;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const signal = new THREE.Mesh(
     new THREE.SphereGeometry(.095, 12, 8),
@@ -424,6 +440,11 @@ function initViewer() {
       }
       requestRender();
     },
+    showPacket(step, progress, reduced) {
+      if (!packetVisual && step) packetVisual = createPacketVisual(practiceView, cables);
+      packetVisual?.show(step, progress, reduced);
+      requestRender();
+    },
     showProbe(path) {
       const steps = path.map(({ link, reverse }) => ({
         curve: cables.get(link)?.mesh.geometry.parameters.path,
@@ -483,7 +504,7 @@ try {
 }
 selectDevice(devices[0].id);
 
-const sections = ['overview', 'practice', 'ip'].map(id => ({
+const sections = ['overview', 'practice', 'ip', 'packet'].map(id => ({
   id,
   panel: document.querySelector(`#${id}-panel`),
   intro: document.querySelector(`#${id}-intro`),
@@ -493,16 +514,19 @@ const viewport = document.querySelector('#viewport');
 
 function syncMode() {
   const hash = location.hash.slice(1);
-  const next = hash === 'practice' || hash === 'ip' ? hash : 'overview';
+  const next = sections.some(section => section.id === hash) ? hash : 'overview';
   if (next !== mode) {
     if (mode === 'ip') ipPractice.clearProbe();
+    if (mode === 'packet') packetJourney.leave();
     mode = next;
     for (const section of sections) {
       section.panel.hidden = section.intro.hidden = section.id !== mode;
     }
+    packetTasks.hidden = mode !== 'packet';
     viewport.dataset.mode = mode;
     viewer?.showMode();
-    refreshPracticeScene();
+    if (mode === 'packet') packetJourney.enter();
+    else refreshPracticeScene();
   }
   for (const section of sections) {
     section.link.setAttribute('aria-current', section.id === mode ? 'page' : 'false');

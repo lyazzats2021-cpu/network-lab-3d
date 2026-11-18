@@ -19,6 +19,7 @@
           <a id="overview-link" href="#">Обзор</a>
           <a id="practice-link" href="#practice">Собери локальную сеть</a>
           <a id="ip-link" href="#ip">IP-МАСТЕР 3D</a>
+          <a id="packet-link" href="#packet">Путешествие пакета</a>
         </nav>
       </div>
     </header>
@@ -40,6 +41,12 @@
         <p class="eyebrow"><span></span> УРОВЕНЬ 2 <b></b> IPv4-АДРЕСАЦИЯ</p>
         <h1>IP-МАСТЕР 3D<span>.</span></h1>
         <p>Настройте четыре ПК в сети 192.168.1.0/24 и проверьте связь по собранной схеме.</p>
+      </div>
+
+      <div class="intro" id="packet-intro" hidden>
+        <p class="eyebrow"><span></span> УРОВЕНЬ 3 <b></b> ETHERNET И ARP</p>
+        <h1>Путешествие пакета данных<span>.</span></h1>
+        <p>Выберите два ПК, чтобы проследить путь кадра по кабелям и увидеть работу коммутатора.</p>
       </div>
 
       <div class="workspace">
@@ -136,7 +143,49 @@
           </fieldset>
           <div id="ip-feedback" class="practice-feedback" role="status" aria-atomic="true" hidden></div>
         </aside>
+
+        <aside class="device-panel packet-panel" id="packet-panel" aria-labelledby="packet-heading" hidden>
+          <div class="panel-heading">
+            <span class="panel-icon" data-icon="network"></span>
+            <div><h2 id="packet-heading">Передача данных</h2><p>Упрощённая учебная модель</p></div>
+          </div>
+          <div class="practice-grid packet-endpoints">
+            <label for="packet-source">Отправитель
+              <select id="packet-source"></select>
+              <small id="packet-source-ip"></small>
+            </label>
+            <label for="packet-target">Получатель
+              <select id="packet-target"></select>
+              <small id="packet-target-ip"></small>
+            </label>
+          </div>
+          <label for="packet-speed" class="packet-speed">Скорость
+            <select id="packet-speed"><option value="slow">Медленно</option><option value="normal" selected>Нормально</option><option value="fast">Быстро</option></select>
+          </label>
+          <button type="button" id="packet-send">Отправить пакет</button>
+          <div class="practice-grid packet-actions">
+            <button type="button" id="packet-pause">Пауза</button>
+            <button type="button" id="packet-repeat">Повторить</button>
+          </div>
+          <p id="packet-status" role="status">Готово к отправке</p>
+          <details id="packet-journal" open>
+            <summary>Путь пакета</summary>
+            <p class="packet-legend"><span>ARP</span><span>Кадр с IP-пакетом</span></p>
+            <ol id="packet-log" role="log" aria-label="События передачи" tabindex="0"></ol>
+          </details>
+        </aside>
       </div>
+
+      <section class="device-panel packet-tasks" id="packet-tasks" aria-labelledby="packet-tasks-heading" hidden>
+        <h2 id="packet-tasks-heading">Практические задания</h2>
+        <div id="packet-questions">
+          <div class="packet-task">
+            <h3>1. Отправьте данные от ПК 01 к ПК 03</h3>
+            <p>Выберите эту пару в панели передачи и дождитесь доставки.</p>
+            <p id="packet-task-one" role="status"></p>
+          </div>
+        </div>
+      </section>
 
       <footer class="page-footer">
         <span><span class="footer-icon" data-icon="cable"></span> <strong>Ethernet-кабели</strong> соединяют устройства в локальной сети.</span>
