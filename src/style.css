@@ -154,3 +154,34 @@ h1 span { color: #25a77c; }
 @media (max-width: 420px) {
   .lab-nav a { padding: 5px; font-size: 10px; }
 }
+
+#viewport[data-mode="ip"] { flex: none; height: clamp(455px, 40vw, 575px); }
+#viewport[data-mode="ip"] .marker[data-ip-status="saved"]::after { content: "●"; color: #78e9ef; }
+#viewport[data-mode="ip"] .marker[data-ip-status="correct"]::after { content: "✓"; color: #8ff0b5; }
+#viewport[data-mode="ip"] .marker[data-ip-status="draft"]::after,
+#viewport[data-mode="ip"] .marker[data-ip-status="error"]::after { content: "!"; color: #ffd378; }
+#viewport[data-mode="ip"] .marker[aria-pressed="true"]::after { color: #173a32; }
+
+.ip-instruction { margin-bottom: 10px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+#ip-devices button { display: grid; justify-items: start; gap: 2px; padding-inline: 9px; }
+#ip-devices small { color: var(--muted); font-size: 10px; }
+#ip-devices [data-ip-status="saved"] { border-color: #85c6cb; background: #e5f5f6; }
+#ip-devices [data-ip-status="correct"] { border-color: #92ccb5; background: #e4f6eb; }
+#ip-devices [data-ip-status="draft"], #ip-devices [data-ip-status="error"] { border-color: #ddbc7a; background: #fff7e4; }
+.ip-config, .ip-pair { margin: 12px 0 0; padding: 9px; border: 1px solid var(--line); border-radius: 8px; }
+.ip-config { display: grid; gap: 5px; background: #f3f9f7; }
+.ip-config h3, .ip-pair legend { margin: 0; color: var(--ink); font-size: 12px; font-weight: 700; }
+.ip-config label, .ip-pair label, #ip-settings-note { color: var(--muted); font-size: 11px; }
+.ip-config input, .ip-pair select { width: 100%; min-height: 36px; padding: 5px 7px; border: 1px solid #abc6bd; border-radius: 6px; background: #fff; color: var(--ink); font-size: 16px; }
+.ip-config input { font-family: ui-monospace, monospace; }
+.ip-config input:focus-visible, .ip-pair select:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+#ip-settings-note:empty { display: none; }
+.ip-panel .ip-wide { width: 100%; margin-top: 9px; }
+.ip-panel #ip-check { background: #12674f; color: #fff; }
+
+@media (max-width: 760px) {
+  #viewport[data-mode="ip"] { min-height: 0; height: clamp(355px, 78vw, 475px); }
+}
+@media (max-width: 420px) {
+  .lab-nav a { white-space: nowrap; }
+}

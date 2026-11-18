@@ -31,3 +31,16 @@ export function checkStar(links) {
   }
   return { attached: attached.size, errors };
 }
+
+// Each PC has one RJ-45 port. A path is one direct cable or two cables via the switch.
+export function connectionPath(links, from, to) {
+  if (from === to || !computers.includes(from) || !computers.includes(to)) return [];
+  const first = links.find(link => link.includes(from));
+  const last = links.find(link => link.includes(to));
+  if (!first || !last) return [];
+  if (first === last) return [{ link: first, reverse: first[1] === from }];
+  if (switchPorts.includes(first[1]) && switchPorts.includes(last[1])) {
+    return [{ link: first, reverse: false }, { link: last, reverse: true }];
+  }
+  return [];
+}
