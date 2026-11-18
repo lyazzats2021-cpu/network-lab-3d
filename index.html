@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f2f6f4">
+    <meta name="description" content="Интерактивная 3D-лаборатория для знакомства с устройствами локальной сети.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a32'/%3E%3Cpath d='M16 12v5M9 20v-3h14v3M13 7h6v5h-6zM6 20h6v5H6zM20 20h6v5h-6z' fill='none' stroke='%23b7f4cc' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <title>NETWORK LAB 3D — Путешествие пакета данных</title>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="shell masthead-inner">
+        <div class="brand">
+          <span class="brand-icon" data-icon="network"></span>
+          <span>NETWORK LAB <b>3D</b></span>
+        </div>
+        <span class="header-tag"><i></i> Учебная лаборатория</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <div class="intro">
+        <p class="eyebrow"><span></span> ЭТАП 01 <b></b> ЗНАКОМСТВО С СЕТЬЮ</p>
+        <h1>Путешествие пакета данных<span>.</span></h1>
+        <p>Осмотрите лабораторию и узнайте, как компьютеры подключаются к локальной сети.</p>
+      </div>
+
+      <div class="workspace">
+        <section class="scene-card" aria-labelledby="scene-heading">
+          <div class="viewport" id="viewport">
+            <div class="scene-header">
+              <h2 id="scene-heading"><span data-icon="box"></span> 3D-лаборатория</h2>
+              <span class="scene-tag"><i></i> Локальная сеть</span>
+            </div>
+            <div id="render-host" class="render-host"></div>
+            <div id="markers" class="markers"></div>
+            <p id="scene-message" class="scene-message" role="status">Загрузка 3D-сцены…</p>
+            <div class="scene-tools" aria-label="Управление камерой">
+              <button type="button" id="zoom-in" title="Приблизить" aria-label="Приблизить" data-icon="plus"></button>
+              <button type="button" id="zoom-out" title="Отдалить" aria-label="Отдалить" data-icon="minus"></button>
+              <button type="button" id="reset" title="Сбросить камеру"><span data-icon="rotate"></span> Сбросить камеру</button>
+            </div>
+          </div>
+          <div class="scene-footer" aria-label="Подсказки по управлению">
+            <span><span data-icon="hand"></span><span>Перетащите для вращения</span></span>
+            <span class="zoom-hint"><span data-icon="search"></span><span>Колесо или два пальца для масштаба</span></span>
+            <span><span data-icon="pointer"></span><span>Выберите устройство</span></span>
+          </div>
+        </section>
+
+        <aside class="device-panel" aria-labelledby="panel-heading">
+          <div class="panel-heading">
+            <span class="panel-icon" data-icon="layers"></span>
+            <div>
+              <h2 id="panel-heading">Устройства</h2>
+              <p>3 устройства</p>
+            </div>
+          </div>
+          <div class="device-list" id="device-list" aria-label="Устройства лаборатории"></div>
+          <article class="info" id="device-info" aria-live="polite" aria-atomic="true"></article>
+        </aside>
+      </div>
+
+      <footer class="page-footer">
+        <span><span class="footer-icon" data-icon="cable"></span> <strong>Ethernet-кабели</strong> соединяют устройства в локальной сети.</span>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
