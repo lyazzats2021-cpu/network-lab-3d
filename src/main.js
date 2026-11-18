@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { devices } from './devices.js';
-import { createLab, makePracticeCable } from './lab.js';
+import { createLab, createRoutingLab, makePracticeCable, makeRoutingCable } from './lab.js';
 import { createPractice } from './practice.js';
 import { createIpPractice } from './ip-practice.js';
 import { createPacketJourney } from './packet-journey.js';
 import { createPacketVisual } from './packet-visual.js';
+import { createRoutingPractice } from './routing-practice.js';
+import { routingDevices, routingName } from './routing-network.js';
 import { computers, portLabel } from './topology.js';
 import './style.css';
 
@@ -46,6 +48,7 @@ const cameraButtons = [zoomIn, zoomOut, reset];
 const buttons = new Map();
 const labels = new Map();
 const practiceLabels = new Map();
+const routingLabels = new Map();
 const pcPortMarker = document.createElement('button');
 pcPortMarker.type = 'button';
 pcPortMarker.className = 'marker';
@@ -104,6 +107,29 @@ const packetJourney = createPacketJourney(
     refreshPracticeScene();
   },
 );
+
+const routingTasks = document.querySelector('#routing-tasks');
+const routing = createRoutingPractice(document.querySelector('#routing-panel'), routingTasks, {
+  cables: links => viewer?.updateRoutingCables(links),
+  animate: (step, progress, reduced) => viewer?.showRoutingPacket(step, progress, reduced),
+  select: id => {
+    for (const [item, label] of routingLabels) label.setAttribute('aria-pressed', String(item === id));
+  },
+});
+
+for (const id of routingDevices) {
+  const node = document.createElement('button');
+  node.type = 'button';
+  node.className = 'marker routing-marker';
+  node.hidden = true;
+  node.dataset.device = id;
+  const name = routingName(id);
+  node.textContent = id.startsWith('switch-') ? `SW ${id.at(-1).toUpperCase()}` : id === 'router' ? 'ROUTER' : name;
+  node.setAttribute('aria-label', name);
+  node.addEventListener('click', () => routing.selectDevice(id));
+  routingLabels.set(id, node);
+  markers.append(node);
+}
 
 function refreshPracticeScene() {
   const ip = mode === 'ip';
@@ -192,6 +218,9 @@ function initViewer() {
   const overview = makeView(false);
   let practiceView;
   let active = overview;
+  let routingView;
+  let routingVisual;
+  const routingCables = new Map();
   const cables = new Map();
   let packetVisual;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -284,7 +313,7 @@ function initViewer() {
     frame = null;
     active.walls.back.visible = camera.position.z > -3.65;
     active.walls.left.visible = camera.position.x > -5.16;
-    if (mode !== 'overview') {
+    if (mode === 'practice' || mode === 'ip' || mode === 'packet') {
       for (const cable of cables.values()) {
         const progress = reducedMotion.matches ? 1 : Math.min(1, (now - cable.started) / 360);
         const count = cable.mesh.geometry.index.count;
@@ -294,7 +323,7 @@ function initViewer() {
     }
     drawProbe(now);
     renderer.render(active.scene, camera);
-    const activeLabels = mode === 'overview' ? labels : practiceLabels;
+    const activeLabels = mode === 'routing' ? routingLabels : mode === 'overview' ? labels : practiceLabels;
     for (const [id, model] of active.devices) {
       const label = activeLabels.get(id);
       if (mode === 'ip' && id === 'switch') label.hidden = true;
@@ -359,7 +388,9 @@ function initViewer() {
         visible &&= node.visible;
       }
       if (!visible) continue;
-      if (mode === 'practice' && portId) practice.selectPort(portId);
+      if (mode === 'routing' && portId) routing.selectPort(portId, deviceId);
+      else if (mode === 'routing' && deviceId) routing.selectDevice(deviceId);
+      else if (mode === 'practice' && portId) practice.selectPort(portId);
       else if (deviceId && mode !== 'overview') selectPracticeDevice(deviceId);
       else if (deviceId) selectDevice(deviceId);
       break;
@@ -426,18 +457,37 @@ function initViewer() {
       requestRender();
     },
     showMode() {
-      if (mode !== 'overview' && !practiceView) {
+      if (mode === 'routing' && !routingView) routingView = createRoutingLab(new THREE.Scene());
+      if (mode !== 'overview' && mode !== 'routing' && !practiceView) {
         practiceView = makeView(true);
         practiceView.scene.add(signal);
       }
       const previous = active;
-      active = mode === 'overview' ? overview : practiceView;
-      for (const label of [...labels.values(), ...practiceLabels.values(), pcPortMarker]) label.hidden = true;
+      active = mode === 'routing' ? routingView : mode === 'overview' ? overview : practiceView;
+      for (const label of [...labels.values(), ...practiceLabels.values(), ...routingLabels.values(), pcPortMarker]) label.hidden = true;
       if (previous !== active) {
         renderer.shadowMap.needsUpdate = true;
         resize();
         resetCamera();
       }
+      requestRender();
+    },
+    updateRoutingCables(links) {
+      if (!routingView) return;
+      for (const [link, cable] of routingCables) {
+        if (links.includes(link)) continue;
+        cable.group.removeFromParent();
+        cable.mesh.geometry.dispose();
+        routingCables.delete(link);
+      }
+      for (const link of links) {
+        if (!routingCables.has(link)) routingCables.set(link, makeRoutingCable(routingView, ...link));
+      }
+      requestRender();
+    },
+    showRoutingPacket(step, progress, reduced) {
+      if (!routingVisual && step) routingVisual = createPacketVisual(routingView, routingCables);
+      routingVisual?.show(step, progress, reduced);
       requestRender();
     },
     showPacket(step, progress, reduced) {
@@ -492,7 +542,7 @@ function showSceneMessage(text) {
   message.textContent = text;
   message.hidden = false;
   for (const button of cameraButtons) button.disabled = true;
-  for (const label of [...labels.values(), ...practiceLabels.values(), pcPortMarker]) label.hidden = true;
+  for (const label of [...labels.values(), ...practiceLabels.values(), ...routingLabels.values(), pcPortMarker]) label.hidden = true;
 }
 
 showSceneMessage('Загрузка 3D-сцены…');
@@ -504,13 +554,14 @@ try {
 }
 selectDevice(devices[0].id);
 
-const sections = ['overview', 'practice', 'ip', 'packet'].map(id => ({
+const sections = ['overview', 'practice', 'ip', 'packet', 'routing'].map(id => ({
   id,
   panel: document.querySelector(`#${id}-panel`),
   intro: document.querySelector(`#${id}-intro`),
   link: document.querySelector(`#${id}-link`),
 }));
 const viewport = document.querySelector('#viewport');
+const sceneNetworkLabel = document.querySelector('#scene-network-label');
 
 function syncMode() {
   const hash = location.hash.slice(1);
@@ -518,14 +569,18 @@ function syncMode() {
   if (next !== mode) {
     if (mode === 'ip') ipPractice.clearProbe();
     if (mode === 'packet') packetJourney.leave();
+    if (mode === 'routing') routing.leave();
     mode = next;
     for (const section of sections) {
       section.panel.hidden = section.intro.hidden = section.id !== mode;
     }
     packetTasks.hidden = mode !== 'packet';
+    routingTasks.hidden = mode !== 'routing';
     viewport.dataset.mode = mode;
+    sceneNetworkLabel.textContent = mode === 'routing' ? 'Сети A и B' : 'Локальная сеть';
     viewer?.showMode();
     if (mode === 'packet') packetJourney.enter();
+    else if (mode === 'routing') routing.enter();
     else refreshPracticeScene();
   }
   for (const section of sections) {

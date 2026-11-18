@@ -26,10 +26,16 @@ export function createPacketVisual(room, cables) {
   let trajectories = [];
   let originalFocus;
   const originalMaterials = new Map();
+  const originalPorts = new Map();
 
   function enter(step) {
     for (const [mesh, material] of originalMaterials) mesh.material = material;
     originalMaterials.clear();
+    for (const [material, { color, intensity }] of originalPorts) {
+      material.emissive.setHex(color);
+      material.emissiveIntensity = intensity;
+    }
+    originalPorts.clear();
     if (originalFocus) {
       const { material, color, intensity } = originalFocus;
       material.emissive.setHex(color);
@@ -46,6 +52,13 @@ export function createPacketVisual(room, cables) {
       originalFocus = { material, color: material.emissive.getHex(), intensity: material.emissiveIntensity };
       material.emissive.setHex(focusColors[step.role]);
       material.emissiveIntensity = step.role === 'delivered' ? 1.55 : 1.22;
+    }
+
+    for (const id of step.ports ?? []) {
+      const { border } = room.ports.get(id);
+      originalPorts.set(border, { color: border.emissive.getHex(), intensity: border.emissiveIntensity });
+      border.emissive.setHex(0xffd461);
+      border.emissiveIntensity = 1.45;
     }
 
     for (const move of step.moves) {

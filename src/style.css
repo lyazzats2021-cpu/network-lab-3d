@@ -241,3 +241,39 @@ h1 span { color: #25a77c; }
 @media (max-width: 360px) {
   .lab-nav a { text-align: right; white-space: normal; }
 }
+
+.scene-card:has(#viewport[data-mode="routing"]) { align-self: start; }
+#viewport[data-mode="routing"] { flex: none; height: clamp(465px, 43vw, 620px); }
+.routing-panel .routing-devices { display: flex; gap: 5px; flex-wrap: wrap; }
+.routing-panel .routing-devices button { min-height: 38px; font-size: 11px; }
+.routing-panel .routing-devices button[aria-pressed="true"] { border-color: #168d70; background: #d9f3e8; }
+.routing-marker[data-device="pc-01"], .routing-marker[data-device="pc-02"], .routing-marker[data-device="switch-a"] { border-color: #a5eaff; }
+.routing-marker[data-device="pc-03"], .routing-marker[data-device="pc-04"], .routing-marker[data-device="switch-b"] { border-color: #a0efb3; }
+.routing-marker[data-device="router"] { border-color: #f0c661; }
+#routing-device-info, #routing-saved, #routing-wire-note { color: var(--muted); font-size: 11px; line-height: 1.45; }
+#routing-saved:empty, #routing-wire-note:empty { display: none; }
+#routing-config { display: grid; gap: 7px; }
+#routing-config fieldset { display: grid; gap: 6px; margin: 0; padding: 5px; border: 1px solid var(--line); border-radius: 7px; }
+#routing-config legend { padding-inline: 3px; font-size: 11px; font-weight: 700; }
+#routing-config label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 5px; }
+#routing-config input[type="checkbox"] { order: -1; width: 18px; min-height: 18px; accent-color: #168d70; }
+.routing-section { margin-top: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.routing-section summary { margin-bottom: 7px; cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750; }
+.routing-section:not([open]) summary { margin-bottom: 0; }
+.routing-section select { min-height: 38px; }
+#routing-connect, #routing-send { width: 100%; margin-block: 6px; }
+#routing-send { background: #12674f; color: #fff; }
+#routing-status { padding: 7px; margin-top: 6px; border-radius: 7px; background: #e5f5ed; color: #20483a; font-size: 12px; font-weight: 700; }
+#routing-status[data-error="true"] { background: #fff3da; color: #654018; }
+#routing-log { max-height: 160px; overflow: auto; list-style: none; padding: 0; margin: 0; }
+#routing-log li { padding: 6px; border-left: 2px solid #69c4cb; margin-bottom: 4px; background: #f2f9f7; font-size: 11px; line-height: 1.45; }
+#routing-log li[aria-current="step"] { border-left-color: #168d70; }
+.routing-task-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.routing-task-grid label { display: grid; gap: 5px; color: var(--ink); font-size: 13px; font-weight: 700; }
+.routing-task-grid select { width: 100%; min-height: 36px; border: 1px solid #abc6bd; border-radius: 6px; background: #fff; color: var(--ink); font-size: 16px; }
+
+@media (max-width: 760px) {
+  #viewport[data-mode="routing"] { min-height: 0; height: clamp(360px, 80vw, 480px); }
+  .routing-task-grid { grid-template-columns: 1fr; }
+  .routing-panel .routing-devices button { min-height: 44px; }
+}

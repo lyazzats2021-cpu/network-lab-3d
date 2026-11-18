@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { portLabel, switchPorts } from './topology.js';
+import { computers, portLabel, switchPorts } from './topology.js';
 
 const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 const up = new THREE.Vector3(0, 1, 0);
@@ -370,6 +370,11 @@ export function createLab(scene, practice = false) {
     plant.add(leaf);
   }
 
+  lightRoom(scene);
+  return { lab, walls, devices, ports };
+}
+
+function lightRoom(scene) {
   const hemi = new THREE.HemisphereLight(0xdaf6ff, 0x8faab5, 2.15);
   const key = new THREE.DirectionalLight(0xfff4d8, 2.7);
   key.position.set(-3, 8, 6);
@@ -380,7 +385,6 @@ export function createLab(scene, practice = false) {
   const fill = new THREE.DirectionalLight(0x93dfff, .65);
   fill.position.set(7, 4, -3);
   scene.add(hemi, key, fill);
-  return { lab, walls, devices, ports };
 }
 
 const cableColors = [palette.aqua, palette.gold, palette.green, palette.teal];
@@ -414,6 +418,86 @@ export function makePracticeCable(room, first, second) {
   const mesh = cable(group, cableColors[Number(first.at(-1)) - 1], [...a, ...floor, ...b.reverse()]);
   for (const part of group.children) part.castShadow = false;
   // Floor routing bends are kept above the floor so each cable remains visible.
+  const positions = mesh.geometry.getAttribute('position');
+  for (let i = 0; i < positions.count; i++) {
+    if (positions.getY(i) < .045) positions.setY(i, .045);
+  }
+  positions.needsUpdate = true;
+  return { group, mesh };
+}
+
+function routingHardware(lab, devices, ports, { id, name, x, z, width, accent, connectors }) {
+  const { group, highlight, anchor } = deviceGroup(lab, devices, id, [x, .64, z], accent.color);
+  block(group, palette.navy, [width + .1, .12, .80], [0, -.57, 0]);
+  block(group, palette.steel, [width - .12, .44, .63], [0, -.31, 0]);
+  block(group, palette.black, [width, .30, .70], [0, .07, 0]);
+  block(group, highlight, [width, .062, .71], [0, .245, 0]);
+  block(group, palette.dark, [width - .06, .24, .05], [0, .065, .358]);
+  for (const [index, connector] of connectors.entries()) {
+    const at = (index + .5) * width / connectors.length - width / 2;
+    makePort(group, ports, connector, [at, .057, .39], .25);
+    block(group, palette.led, [.045, .032, .031], [at + .09, .169, .389], false);
+  }
+  graphic(group, [width - .13, .29], [0, .278, -.035], (ctx, w, h) => {
+    ctx.fillStyle = '#173c49';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#e9fff5';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 79px sans-serif';
+    ctx.fillText(name, w / 2, h * .70);
+  }).rotation.x = -Math.PI / 2;
+  anchor.set(x, 1.25, z + .33);
+}
+
+export function createRoutingLab(scene) {
+  const lab = new THREE.Group();
+  scene.add(lab);
+  const walls = makeRoom(lab);
+  const devices = new Map();
+  const ports = new Map();
+
+  computer(lab, devices, 'pc-01', -3.21, 1, palette.aqua, -2.22, ports);
+  computer(lab, devices, 'pc-02', -3.21, 1, palette.aqua, 1.58, ports);
+  computer(lab, devices, 'pc-03', 3.21, -1, palette.green, -2.22, ports);
+  computer(lab, devices, 'pc-04', 3.21, -1, palette.green, 1.58, ports);
+  routingHardware(lab, devices, ports, {
+    id: 'switch-a', name: 'SWITCH A', x: -1.22, z: -.48, width: 1.27,
+    accent: palette.aqua, connectors: ['sw-a-1', 'sw-a-2', 'switch-a'],
+  });
+  routingHardware(lab, devices, ports, {
+    id: 'switch-b', name: 'SWITCH B', x: 1.22, z: -.48, width: 1.27,
+    accent: palette.green, connectors: ['switch-b', 'sw-b-1', 'sw-b-2'],
+  });
+  routingHardware(lab, devices, ports, {
+    id: 'router', name: 'ROUTER · A | B', x: 0, z: 1.21, width: 1.61,
+    accent: palette.gold, connectors: ['if-a', 'if-b'],
+  });
+  lightRoom(scene);
+  return { scene, lab, walls, devices, ports };
+}
+
+export function makeRoutingCable(room, first, second) {
+  const access = computers.includes(first);
+  const side = access ? second.slice(-1) : first.slice(-1);
+  const color = side === 'a' ? palette.aqua : palette.green;
+  const port = access ? `sw-${side}-${Number(first.at(-1)) % 2 ? 1 : 2}` : second;
+  const start = room.ports.get(first).endpoint;
+  const end = room.ports.get(port).endpoint;
+  const lane = (side === 'a' ? -1 : 1) * (access ? (Number(first.at(-1)) % 2 ? 1.37 : 1.49) : .77);
+  const source = access ? computerRoute(start, Math.abs(lane)) : [
+    start.toArray(), [start.x, start.y, start.z + .18], [start.x, .14, start.z + .27], [lane, .09, start.z + .35],
+  ];
+  const points = [
+    ...source,
+    [lane, .09, end.z + (access ? .48 : .62)],
+    [end.x, .13, end.z + .27],
+    [end.x, end.y, end.z + .15],
+    end.toArray(),
+  ];
+  const group = new THREE.Group();
+  room.lab.add(group);
+  const mesh = cable(group, color, points);
+  for (const part of group.children) part.castShadow = false;
   const positions = mesh.geometry.getAttribute('position');
   for (let i = 0; i < positions.count; i++) {
     if (positions.getY(i) < .045) positions.setY(i, .045);
