@@ -314,3 +314,7 @@ h1 span { color: #25a77c; }
 @media (max-width: 760px) {
   #viewport[data-mode="detective"] { min-height: 0; height: clamp(360px, 80vw, 480px); }
 }
+@media (max-width: 480px) {
+  .masthead-inner { flex-wrap: wrap; gap: 4px; padding-block: 7px; }
+  .lab-nav { flex: 0 0 100%; justify-content: flex-start; }
+}
