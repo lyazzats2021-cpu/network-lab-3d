@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { devices } from './devices.js';
 import { createLab, makePracticeCable } from './lab.js';
 import { createPractice } from './practice.js';
+import { createIpPractice } from './ip-practice.js';
 import { computers, portLabel } from './topology.js';
 import './style.css';
 
@@ -50,7 +51,8 @@ pcPortMarker.dataset.port = '';
 pcPortMarker.hidden = true;
 pcPortMarker.textContent = 'RJ‑45';
 markers.append(pcPortMarker);
-let isPractice = false;
+let mode = 'overview';
+let ipState;
 let practiceState;
 let selection;
 let viewer;
@@ -80,12 +82,38 @@ for (const device of devices) {
 const practicePanel = document.querySelector('#practice-panel');
 const practice = createPractice(practicePanel, state => {
   practiceState = state;
-  for (const [id, label] of practiceLabels) {
-    label.setAttribute('aria-pressed', String(state.selected === id));
-    if (id !== 'switch') label.dataset.connected = String(state.links.some(link => link.includes(id)));
-  }
-  viewer?.updatePractice(state);
+  refreshPracticeScene();
 }, () => viewer?.resetCamera());
+
+const ipPanel = document.querySelector('#ip-panel');
+const ipPractice = createIpPractice(ipPanel, () => practiceState.links, state => {
+  ipState = state;
+  refreshPracticeScene();
+}, path => viewer?.showProbe(path));
+
+function refreshPracticeScene() {
+  const ip = mode === 'ip';
+  const selected = ip ? ipState.selected : practiceState.selected;
+  for (const [id, label] of practiceLabels) {
+    const status = ip ? ipState.statuses.get(id) : null;
+    label.setAttribute('aria-pressed', String(id === selected));
+    if (status) {
+      label.dataset.ipStatus = status.state;
+      label.setAttribute('aria-label', `${portLabel(id)} · ${status.label}`);
+    } else {
+      delete label.dataset.ipStatus;
+      label.removeAttribute('aria-label');
+    }
+    if (id !== 'switch') {
+      label.dataset.connected = String(!ip && practiceState.links.some(link => link.includes(id)));
+    }
+  }
+  viewer?.updatePractice({
+    selected,
+    source: ip ? null : practiceState.source,
+    links: practiceState.links,
+  });
+}
 
 for (const id of [...computers, 'switch']) {
   const marker = document.createElement('button');
@@ -94,11 +122,16 @@ for (const id of [...computers, 'switch']) {
   marker.hidden = true;
   marker.innerHTML = id === 'switch' ? `${icon('switch')} Коммутатор` : `${icon('monitor')} ${portLabel(id)}`;
   marker.setAttribute('aria-pressed', 'false');
-  marker.addEventListener('click', () => practice.selectDevice(id));
+  marker.addEventListener('click', () => selectPracticeDevice(id));
   markers.append(marker);
   practiceLabels.set(id, marker);
 }
 pcPortMarker.addEventListener('click', () => practice.selectPort(practiceState.selected));
+
+function selectPracticeDevice(id) {
+  if (mode === 'ip') ipPractice.selectDevice(id);
+  else practice.selectDevice(id);
+}
 
 function selectDevice(id) {
   if (selection === id) return;
@@ -146,6 +179,13 @@ function initViewer() {
   let active = overview;
   const cables = new Map();
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const signal = new THREE.Mesh(
+    new THREE.SphereGeometry(.095, 12, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffed83, toneMapped: false, depthTest: false }),
+  );
+  signal.visible = false;
+  signal.renderOrder = 1;
+  let probe;
   const camera = new THREE.PerspectiveCamera(36, 1, .1, 100);
   const controls = new OrbitControls(camera, canvas);
   controls.enablePan = false;
@@ -173,7 +213,7 @@ function initViewer() {
   let height = 0;
 
   function resetCamera() {
-    if (isPractice) {
+    if (mode !== 'overview') {
       controls.target.set(0, 1.12, -.35);
       initialDirection.set(.26, .96, 1);
     } else {
@@ -216,7 +256,7 @@ function initViewer() {
     projected.copy(anchor).project(camera);
     const x = (projected.x + 1) * width / 2;
     const y = (1 - projected.y) * height / 2;
-    const edge = isPractice ? 34 : 46;
+    const edge = mode === 'overview' ? 46 : 34;
     label.hidden = projected.z < -1 || projected.z > 1 || x < edge || x > width - edge || y < minY || y > height - 18;
     if (!label.hidden) {
       label.style.left = `${x}px`;
@@ -228,7 +268,7 @@ function initViewer() {
     frame = null;
     active.walls.back.visible = camera.position.z > -3.65;
     active.walls.left.visible = camera.position.x > -5.16;
-    if (isPractice) {
+    if (mode !== 'overview') {
       for (const cable of cables.values()) {
         const progress = reducedMotion.matches ? 1 : Math.min(1, (now - cable.started) / 360);
         const count = cable.mesh.geometry.index.count;
@@ -236,12 +276,15 @@ function initViewer() {
         if (progress < 1) requestRender();
       }
     }
+    drawProbe(now);
     renderer.render(active.scene, camera);
-    const activeLabels = isPractice ? practiceLabels : labels;
+    const activeLabels = mode === 'overview' ? labels : practiceLabels;
     for (const [id, model] of active.devices) {
-      placeLabel(activeLabels.get(id), model.anchor);
+      const label = activeLabels.get(id);
+      if (mode === 'ip' && id === 'switch') label.hidden = true;
+      else placeLabel(label, model.anchor);
     }
-    const selectedPort = active.ports?.get(practiceState.selected);
+    const selectedPort = mode === 'practice' && active.ports.get(practiceState.selected);
     if (selectedPort) {
       pcPortMarker.setAttribute('aria-label', `${portLabel(practiceState.selected)} · выбрать RJ‑45`);
       placeLabel(pcPortMarker, selectedPort.endpoint, 55);
@@ -251,6 +294,25 @@ function initViewer() {
     canvas.dataset.sceneReady = 'true';
     message.hidden = true;
     for (const button of cameraButtons) button.disabled = false;
+  }
+
+  function drawProbe(now) {
+    if (!probe || reducedMotion.matches) {
+      signal.visible = false;
+      probe = null;
+      return;
+    }
+
+    const time = Math.max(0, now - probe.started) / 470;
+    const step = probe.steps[Math.floor(time)];
+    signal.visible = Boolean(step);
+    if (!step) {
+      probe = null;
+      return;
+    }
+    const progress = time % 1;
+    step.curve.getPointAt(step.reverse ? 1 - progress : progress, signal.position);
+    requestRender();
   }
 
   function requestRender() {
@@ -281,8 +343,8 @@ function initViewer() {
         visible &&= node.visible;
       }
       if (!visible) continue;
-      if (isPractice && portId) practice.selectPort(portId);
-      else if (isPractice && deviceId) practice.selectDevice(deviceId);
+      if (mode === 'practice' && portId) practice.selectPort(portId);
+      else if (deviceId && mode !== 'overview') selectPracticeDevice(deviceId);
       else if (deviceId) selectDevice(deviceId);
       break;
     }
@@ -348,13 +410,31 @@ function initViewer() {
       requestRender();
     },
     showMode() {
-      if (isPractice && !practiceView) practiceView = makeView(true);
-      active = isPractice ? practiceView : overview;
+      if (mode !== 'overview' && !practiceView) {
+        practiceView = makeView(true);
+        practiceView.scene.add(signal);
+      }
+      const previous = active;
+      active = mode === 'overview' ? overview : practiceView;
       for (const label of [...labels.values(), ...practiceLabels.values(), pcPortMarker]) label.hidden = true;
-      renderer.shadowMap.needsUpdate = true;
-      resize();
-      resetCamera();
-      if (isPractice) this.updatePractice(practiceState);
+      if (previous !== active) {
+        renderer.shadowMap.needsUpdate = true;
+        resize();
+        resetCamera();
+      }
+      requestRender();
+    },
+    showProbe(path) {
+      const steps = path.map(({ link, reverse }) => ({
+        curve: cables.get(link)?.mesh.geometry.parameters.path,
+        reverse,
+      }));
+      const available = steps.length > 0 && steps.every(step => step.curve) && !reducedMotion.matches;
+      probe = available ? {
+        started: performance.now(),
+        steps: [...steps, ...steps.slice().reverse().map(step => ({ ...step, reverse: !step.reverse }))],
+      } : null;
+      requestRender();
     },
     resetCamera,
     updatePractice({ selected, source, links }) {
@@ -403,24 +483,30 @@ try {
 }
 selectDevice(devices[0].id);
 
-const overviewPanel = document.querySelector('#overview-panel');
-const overviewIntro = document.querySelector('#overview-intro');
-const practiceIntro = document.querySelector('#practice-intro');
-const overviewLink = document.querySelector('#overview-link');
-const practiceLink = document.querySelector('#practice-link');
+const sections = ['overview', 'practice', 'ip'].map(id => ({
+  id,
+  panel: document.querySelector(`#${id}-panel`),
+  intro: document.querySelector(`#${id}-intro`),
+  link: document.querySelector(`#${id}-link`),
+}));
 const viewport = document.querySelector('#viewport');
 
 function syncMode() {
-  const shouldPractice = location.hash === '#practice';
-  if (shouldPractice !== isPractice) {
-    isPractice = shouldPractice;
-    overviewIntro.hidden = overviewPanel.hidden = isPractice;
-    practiceIntro.hidden = practicePanel.hidden = !isPractice;
-    viewport.dataset.mode = isPractice ? 'practice' : 'overview';
+  const hash = location.hash.slice(1);
+  const next = hash === 'practice' || hash === 'ip' ? hash : 'overview';
+  if (next !== mode) {
+    if (mode === 'ip') ipPractice.clearProbe();
+    mode = next;
+    for (const section of sections) {
+      section.panel.hidden = section.intro.hidden = section.id !== mode;
+    }
+    viewport.dataset.mode = mode;
     viewer?.showMode();
+    refreshPracticeScene();
   }
-  overviewLink.setAttribute('aria-current', isPractice ? 'false' : 'page');
-  practiceLink.setAttribute('aria-current', isPractice ? 'page' : 'false');
+  for (const section of sections) {
+    section.link.setAttribute('aria-current', section.id === mode ? 'page' : 'false');
+  }
 }
 window.addEventListener('hashchange', syncMode);
 syncMode();

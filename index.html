@@ -18,6 +18,7 @@
         <nav class="lab-nav" aria-label="Разделы лаборатории">
           <a id="overview-link" href="#">Обзор</a>
           <a id="practice-link" href="#practice">Собери локальную сеть</a>
+          <a id="ip-link" href="#ip">IP-МАСТЕР 3D</a>
         </nav>
       </div>
     </header>
@@ -33,6 +34,12 @@
         <p class="eyebrow"><span></span> ПРАКТИЧЕСКИЙ УРОВЕНЬ <b></b> ТОПОЛОГИЯ «ЗВЕЗДА»</p>
         <h1>Собери локальную сеть<span>.</span></h1>
         <p>Подключите четыре компьютера к одному коммутатору и проверьте схему.</p>
+      </div>
+
+      <div class="intro" id="ip-intro" hidden>
+        <p class="eyebrow"><span></span> УРОВЕНЬ 2 <b></b> IPv4-АДРЕСАЦИЯ</p>
+        <h1>IP-МАСТЕР 3D<span>.</span></h1>
+        <p>Настройте четыре ПК в сети 192.168.1.0/24 и проверьте связь по собранной схеме.</p>
       </div>
 
       <div class="workspace">
@@ -97,6 +104,37 @@
             <button type="button" id="practice-reset">Начать уровень заново</button>
           </div>
           <div id="practice-feedback" class="practice-feedback" role="status" aria-atomic="true" hidden></div>
+        </aside>
+
+        <aside class="device-panel practice-panel ip-panel" id="ip-panel" aria-labelledby="ip-heading" hidden>
+          <div class="panel-heading">
+            <span class="panel-icon" data-icon="network"></span>
+            <div>
+              <h2 id="ip-heading">Сетевые настройки</h2>
+              <p>IPv4 · 192.168.1.0/24</p>
+            </div>
+          </div>
+          <p class="ip-instruction">Номер ПК умножьте на 10, чтобы получить номер узла. Определите маску по префиксу /24.</p>
+          <div id="ip-devices" class="practice-grid" role="group" aria-label="Компьютеры"></div>
+          <form id="ip-form" class="ip-config" aria-labelledby="ip-selection" hidden>
+            <h3 id="ip-selection"></h3>
+            <label for="ip-address">IPv4-адрес</label>
+            <input id="ip-address" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <label for="ip-mask">Маска подсети</label>
+            <input id="ip-mask" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button type="submit">Сохранить параметры</button>
+            <p id="ip-settings-note" role="status"></p>
+          </form>
+          <button type="button" id="ip-check" class="ip-wide">Проверить IP-адреса</button>
+          <fieldset class="ip-pair">
+            <legend>Проверка связи</legend>
+            <div class="practice-grid">
+              <label for="ip-source">Откуда <select id="ip-source"></select></label>
+              <label for="ip-target">Куда <select id="ip-target"></select></label>
+            </div>
+            <button type="button" id="ip-test-link" class="ip-wide">Проверить связь</button>
+          </fieldset>
+          <div id="ip-feedback" class="practice-feedback" role="status" aria-atomic="true" hidden></div>
         </aside>
       </div>
 
