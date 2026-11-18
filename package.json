@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "check": "node --check src/main.js && node --check src/lab.js && node --check src/devices.js && node --check src/practice.js && node --check src/topology.js && node --check src/ip-practice.js && node --check src/ipv4.js && node --check src/packet-network.js && node --check src/packet-journey.js && node --check src/packet-visual.js && node --check src/routing-network.js && node --check src/routing-practice.js && node --check src/detective-network.js && node --check src/detective.js && node --check vite.config.js && node --test",
+    "check": "node --check src/main.js && node --check src/lab.js && node --check src/devices.js && node --check src/practice.js && node --check src/topology.js && node --check src/ip-practice.js && node --check src/ipv4.js && node --check src/packet-network.js && node --check src/packet-journey.js && node --check src/packet-visual.js && node --check src/routing-network.js && node --check src/routing-practice.js && node --check src/detective-network.js && node --check src/detective.js && node --check src/assessment.js && node --check src/assessment-ui.js && node --check vite.config.js && node --test",
     "build": "vite build",
     "preview": "vite preview"
   },

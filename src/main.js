@@ -1,3 +1,4 @@
+import { createAssessment } from './assessment-ui.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { devices } from './devices.js';
@@ -9,7 +10,8 @@ import { createPacketVisual } from './packet-visual.js';
 import { createRoutingPractice } from './routing-practice.js';
 import { createDetective } from './detective.js';
 import { routingDevices, routingName } from './routing-network.js';
-import { computers, portLabel } from './topology.js';
+import { computers, portLabel, switchPorts } from './topology.js';
+import { lessonMask } from './ipv4.js';
 import './style.css';
 
 const paths = {
@@ -57,7 +59,8 @@ pcPortMarker.dataset.port = '';
 pcPortMarker.hidden = true;
 pcPortMarker.textContent = 'RJ‑45';
 markers.append(pcPortMarker);
-let mode = 'overview';
+let mode = 'start';
+const assessment = createAssessment();
 const usesRoutingScene = () => mode === 'routing' || mode === 'detective';
 let ipState;
 let packetSender;
@@ -91,23 +94,31 @@ const practicePanel = document.querySelector('#practice-panel');
 const practice = createPractice(practicePanel, state => {
   practiceState = state;
   refreshPracticeScene();
-}, () => viewer?.resetCamera());
+}, () => viewer?.resetCamera(), assessment.submit);
 
 const ipPanel = document.querySelector('#ip-panel');
 const ipPractice = createIpPractice(ipPanel, () => practiceState.links, state => {
   ipState = state;
   refreshPracticeScene();
-}, path => viewer?.showProbe(path));
+}, path => viewer?.showProbe(path), assessment.submit);
+
+// A prepared LAN isolates the transfer grade from earlier exam mistakes.
+const assessmentLinks = computers.map((id, index) => [id, switchPorts[index]]);
+const assessmentIPs = new Map(computers.map((id, index) => [
+  id, { address: `192.168.1.${(index + 1) * 10}`, mask: lessonMask },
+]));
+const packetLinks = () => assessment.control() ? assessmentLinks : practiceState.links;
 
 const packetTasks = document.querySelector('#packet-tasks');
 const packetJourney = createPacketJourney(
   document.querySelector('#packet-panel'), packetTasks,
-  ipPractice.getSaved, () => practiceState.links,
+  () => assessment.control() ? assessmentIPs : ipPractice.getSaved(), packetLinks,
   (step, progress, reduced) => viewer?.showPacket(step, progress, reduced),
   from => {
     packetSender = from;
     refreshPracticeScene();
   },
+  assessment,
 );
 
 const routingTasks = document.querySelector('#routing-tasks');
@@ -117,7 +128,7 @@ const routing = createRoutingPractice(document.querySelector('#routing-panel'), 
   select: id => {
     for (const [item, label] of routingLabels) label.setAttribute('aria-pressed', String(item === id));
   },
-});
+}, assessment.submit);
 
 const detective = createDetective(document.querySelector('#detective-panel'), {
   cables: links => viewer?.updateRoutingCables(links),
@@ -129,7 +140,7 @@ const detective = createDetective(document.querySelector('#detective-panel'), {
     }
     viewer?.highlightDetectiveDevice(id, status.get(id));
   },
-});
+}, assessment);
 
 for (const id of routingDevices) {
   const node = document.createElement('button');
@@ -147,6 +158,7 @@ for (const id of routingDevices) {
 
 function refreshPracticeScene() {
   const ip = mode === 'ip';
+  const links = mode === 'packet' ? packetLinks() : practiceState.links;
   const selected = mode === 'packet' ? packetSender : ip ? ipState.selected : practiceState.selected;
   for (const [id, label] of practiceLabels) {
     const status = ip ? ipState.statuses.get(id) : null;
@@ -159,13 +171,13 @@ function refreshPracticeScene() {
       label.removeAttribute('aria-label');
     }
     if (id !== 'switch') {
-      label.dataset.connected = String(!ip && practiceState.links.some(link => link.includes(id)));
+      label.dataset.connected = String(!ip && links.some(link => link.includes(id)));
     }
   }
   viewer?.updatePractice({
     selected,
     source: mode === 'practice' ? practiceState.source : null,
-    links: practiceState.links,
+    links,
   });
 }
 
@@ -326,6 +338,7 @@ function initViewer() {
 
   function render(now) {
     frame = null;
+    if (mode === 'start' || mode === 'results') return;
     active.walls.back.visible = camera.position.z > -3.65;
     active.walls.left.visible = camera.position.x > -5.16;
     if (mode === 'practice' || mode === 'ip' || mode === 'packet') {
@@ -594,7 +607,13 @@ const sceneNetworkLabel = document.querySelector('#scene-network-label');
 
 function syncMode() {
   const hash = location.hash.slice(1);
-  const next = sections.some(section => section.id === hash) ? hash : 'overview';
+  const next = assessment.resolve(hash);
+  if (next !== hash) history.replaceState(null, '', next === 'start'
+    ? location.pathname + location.search
+    : `#${next}`);
+  const showScene = sections.some(section => section.id === next);
+  document.querySelector('.workspace').hidden = !showScene;
+  document.querySelector('.page-footer').hidden = !showScene;
   if (next !== mode) {
     if (mode === 'ip') ipPractice.clearProbe();
     if (mode === 'packet') packetJourney.leave();
@@ -608,7 +627,7 @@ function syncMode() {
     routingTasks.hidden = mode !== 'routing';
     viewport.dataset.mode = mode;
     sceneNetworkLabel.textContent = usesRoutingScene() ? 'Сети A и B' : 'Локальная сеть';
-    viewer?.showMode();
+    if (showScene) viewer?.showMode();
     if (mode === 'packet') packetJourney.enter();
     else if (mode === 'routing') routing.enter();
     else if (mode === 'detective') detective.enter();
@@ -617,6 +636,11 @@ function syncMode() {
   for (const section of sections) {
     section.link.setAttribute('aria-current', section.id === mode ? 'page' : 'false');
   }
+  assessment.render(next);
 }
+assessment.attach(next => { location.hash = next; syncMode(); });
+document.querySelector('.lab-nav').addEventListener('click', event => {
+  if (event.target.closest('[aria-disabled="true"]')) event.preventDefault();
+});
 window.addEventListener('hashchange', syncMode);
 syncMode();

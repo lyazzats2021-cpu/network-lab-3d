@@ -15,7 +15,8 @@
           <span class="brand-icon" data-icon="network"></span>
           <span>NETWORK LAB <b>3D</b></span>
         </div>
-        <nav class="lab-nav" aria-label="Разделы лаборатории">
+        <nav class="lab-nav" hidden aria-label="Разделы лаборатории">
+          <a id="results-link" href="#results" hidden>Результаты</a>
           <a id="overview-link" href="#">Обзор</a>
           <a id="practice-link" href="#practice">Собери локальную сеть</a>
           <a id="ip-link" href="#ip">IP-МАСТЕР 3D</a>
@@ -27,7 +28,52 @@
     </header>
 
     <main class="shell">
-      <div class="intro" id="overview-intro">
+      <section class="assessment-start device-panel" id="start-screen" aria-labelledby="start-heading">
+        <div>
+          <p class="eyebrow"><span></span> ИНФОРМАТИКА <b></b> ПЯТЬ УРОВНЕЙ</p>
+          <h1 id="start-heading">Сетевая лаборатория<span>.</span></h1>
+          <p>Соберите сеть, передайте пакет и восстановите связь после сбоя.</p>
+        </div>
+        <form id="start-form">
+          <label for="student-name">Фамилия и имя студента <input id="student-name" maxlength="100" autocomplete="name"></label>
+          <label for="student-group">Учебная группа <input id="student-group" maxlength="40"></label>
+          <fieldset>
+            <legend>Режим прохождения</legend>
+            <label class="mode-option"><input type="radio" name="mode" value="training" checked><span><strong>Тренировка</strong><small>Свободный выбор уровней и повторные проверки</small></span></label>
+            <label class="mode-option"><input type="radio" name="mode" value="control"><span><strong>Контроль знаний</strong><small>Пять уровней по порядку, одна проверка на задание</small></span></label>
+          </fieldset>
+          <button class="assessment-primary" type="submit">Начать</button>
+          <p id="start-error" role="status" hidden></p>
+        </form>
+      </section>
+
+      <section id="assessment-bar" class="assessment-bar device-panel" aria-label="Режим и прогресс" hidden>
+        <div class="assessment-top">
+          <div><strong id="assessment-mode"></strong><p id="assessment-score"></p></div>
+          <button type="button" id="assessment-reset">Начать заново</button>
+        </div>
+        <ol id="assessment-levels" aria-label="Выполнение пяти уровней"></ol>
+        <details id="assessment-rules">
+          <summary>Критерии и зафиксированные результаты</summary>
+          <p>Каждая зачётная проверка фиксируется один раз. Результат хранится в этом браузере.</p>
+          <ul id="assessment-tasks"></ul>
+        </details>
+        <p id="assessment-error" role="status" hidden></p>
+        <button type="button" class="assessment-primary" id="assessment-next" hidden></button>
+      </section>
+
+      <section class="assessment-results device-panel" id="results-screen" aria-labelledby="results-heading" hidden>
+        <p class="eyebrow"><span></span> КОНТРОЛЬ ЗНАНИЙ</p>
+        <h1 id="results-heading">Итоговые результаты<span>.</span></h1>
+        <p id="results-student"></p>
+        <p>Информатика · Организация компьютерных сетей</p>
+        <strong id="results-total"></strong>
+        <p id="results-message"></p>
+        <ul id="results-levels"></ul>
+        <button class="assessment-primary" id="results-download" type="button">Скачать результат</button>
+      </section>
+
+      <div class="intro" id="overview-intro" hidden>
         <p class="eyebrow"><span></span> ЭТАП 01 <b></b> ЗНАКОМСТВО С СЕТЬЮ</p>
         <h1>Путешествие пакета данных<span>.</span></h1>
         <p>Осмотрите лабораторию и узнайте, как компьютеры подключаются к локальной сети.</p>
@@ -63,7 +109,7 @@
         <p>Проверьте связь, найдите причину сбоя и восстановите работу сети.</p>
       </div>
 
-      <div class="workspace">
+      <div class="workspace" hidden>
         <section class="scene-card" aria-labelledby="scene-heading">
           <div class="viewport" id="viewport">
             <div class="scene-header">
@@ -121,7 +167,7 @@
 
           <ul id="practice-links" class="practice-links" aria-label="Кабельные соединения"></ul>
           <div class="practice-actions">
-            <button type="button" id="practice-check">Проверить сеть</button>
+            <button type="button" id="practice-check" data-grade="practice/topology">Проверить сеть</button>
             <button type="button" id="practice-reset">Начать уровень заново</button>
           </div>
           <div id="practice-feedback" class="practice-feedback" role="status" aria-atomic="true" hidden></div>
@@ -146,7 +192,7 @@
             <button type="submit">Сохранить параметры</button>
             <p id="ip-settings-note" role="status"></p>
           </form>
-          <button type="button" id="ip-check" class="ip-wide">Проверить IP-адреса</button>
+          <button type="button" id="ip-check" data-grade="ip/addresses" class="ip-wide">Проверить IP-адреса</button>
           <fieldset class="ip-pair">
             <legend>Проверка связи</legend>
             <div class="practice-grid">
@@ -176,7 +222,7 @@
           <label for="packet-speed" class="packet-speed">Скорость
             <select id="packet-speed"><option value="slow">Медленно</option><option value="normal" selected>Нормально</option><option value="fast">Быстро</option></select>
           </label>
-          <button type="button" id="packet-send">Отправить пакет</button>
+          <button type="button" id="packet-send" data-grade="packet/delivery">Отправить пакет</button>
           <div class="practice-grid packet-actions">
             <button type="button" id="packet-pause">Пауза</button>
             <button type="button" id="packet-repeat">Повторить</button>
@@ -291,11 +337,11 @@
           </form>
           <div class="packet-task">
             <h3>2. Подключите маршрутизатор к двум коммутаторам</h3>
-            <button type="button" id="routing-check-wires">Проверить кабели</button><p role="status"></p>
+            <button type="button" id="routing-check-wires" data-grade="routing/wires">Проверить кабели</button><p role="status"></p>
           </div>
           <div class="packet-task">
             <h3>3. Настройте шлюз на каждом из четырёх ПК</h3>
-            <button type="button" id="routing-check-gateways">Проверить адреса и шлюзы</button><p role="status"></p>
+            <button type="button" id="routing-check-gateways" data-grade="routing/gateways">Проверить адреса и шлюзы</button><p role="status"></p>
           </div>
           <form data-route-quiz="path">
             <label>4. Каков путь от ПК 01 к ПК 03?
@@ -308,11 +354,12 @@
             <p>Внесите учебную ошибку, отправьте пакет от ПК 01 к ПК 03 и исправьте причину из журнала.</p>
             <button type="button" id="routing-fault">Внести учебную ошибку</button>
             <p id="routing-fault-note" role="status"></p>
+            <button type="button" id="routing-grade-fault" data-grade="routing/fault" hidden>Зачесть устранение неисправности</button>
           </div>
         </div>
       </section>
 
-      <footer class="page-footer">
+      <footer class="page-footer" hidden>
         <span><span class="footer-icon" data-icon="cable"></span> <strong>Ethernet-кабели</strong> соединяют устройства в локальной сети.</span>
       </footer>
     </main>

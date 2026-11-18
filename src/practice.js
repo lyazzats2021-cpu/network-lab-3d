@@ -1,6 +1,6 @@
 import { checkStar, computers, connect, portLabel, switchPorts } from './topology.js';
 
-export function createPractice(panel, onUpdate, onReset) {
+export function createPractice(panel, onUpdate, onReset, submit) {
   const links = [];
   let selected = null;
   let source = null;
@@ -135,8 +135,10 @@ export function createPractice(panel, onUpdate, onReset) {
 
   pcPort.addEventListener('click', () => selectPort(selected));
   panel.querySelector('#practice-check').addEventListener('click', () => {
-    const { errors } = checkStar(links);
-    report(errors.length ? 'Исправьте схему' : 'Топология «звезда» собрана', errors);
+    const { attached, errors } = checkStar(links);
+    const title = errors.length ? 'Исправьте схему' : 'Топология «звезда» собрана';
+    const feedback = [`${attached} из 4 ПК подключены к коммутатору.`, ...errors].join(' ');
+    if (submit('practice', 'topology', attached * 5, feedback)) report(title, errors);
   });
   panel.querySelector('#practice-reset').addEventListener('click', () => {
     links.length = 0;

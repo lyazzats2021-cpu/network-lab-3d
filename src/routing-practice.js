@@ -4,7 +4,7 @@ import {
   routingDevices, routingName, subnetOf, switchId, wiringErrors,
 } from './routing-network.js';
 
-export function createRoutingPractice(panel, tasks, view) {
+export function createRoutingPractice(panel, tasks, view, submit) {
   const state = createRoutingState();
   const $ = name => panel.querySelector(`#routing-${name}`);
   const form = $('config');
@@ -27,6 +27,7 @@ export function createRoutingPractice(panel, tasks, view) {
   let run;
   let frame = null;
   let fault = null;
+  let faultSolved = false;
 
   for (const side of networks) {
     sw.add(new Option(side.toUpperCase(), switchId(side)));
@@ -158,6 +159,7 @@ export function createRoutingPractice(panel, tasks, view) {
       if (++run.index === run.steps.length) {
         if (fault?.attempted && lastPair[0] === 'pc-01' && lastPair[1] === 'pc-03') {
           fault = null;
+          faultSolved = true;
           faultNote.textContent = 'Выполнено. ПК 01 снова передаёт данные в подсеть B.';
         }
         stop();
@@ -264,10 +266,14 @@ export function createRoutingPractice(panel, tasks, view) {
     path: ['router', 'ПК 01 передаёт кадр через коммутатор A к шлюзу. Маршрутизатор отправляет пакет через B к ПК 03.'],
   };
   for (const quiz of tasks.querySelectorAll('[data-route-quiz]')) {
+    const id = quiz.dataset.routeQuiz;
+    quiz.querySelector('button').dataset.grade = `routing/${id}`;
     quiz.addEventListener('submit', event => {
       event.preventDefault();
-      const [answer, explanation] = quizzes[quiz.dataset.routeQuiz];
-      quiz.querySelector('[role="status"]').textContent = `${quiz.querySelector('select').value === answer ? 'Верно.' : 'Проверьте ответ.'} ${explanation}`;
+      const [answer, explanation] = quizzes[id];
+      const correct = quiz.querySelector('select').value === answer;
+      const feedback = `${correct ? 'Верно.' : 'Проверьте ответ.'} ${explanation}`;
+      if (submit('routing', id, correct ? 4 : 0, feedback)) quiz.querySelector('[role="status"]').textContent = feedback;
     });
   }
   for (const [id, verify, success] of [
@@ -277,11 +283,22 @@ export function createRoutingPractice(panel, tasks, view) {
     const button = tasks.querySelector(`#routing-check-${id}`);
     button.addEventListener('click', () => {
       const errors = verify(state);
-      button.parentElement.querySelector('[role="status"]').textContent = errors.length ? errors.join(' ') : success;
+      const feedback = errors.length ? errors.join(' ') : success;
+      if (submit('routing', id, errors.length ? 0 : 4, feedback)) {
+        button.parentElement.querySelector('[role="status"]').textContent = feedback;
+      }
     });
   }
+  tasks.querySelector('#routing-grade-fault').addEventListener('click', () => {
+    const verified = faultSolved && !planRoute(state, 'pc-01', 'pc-03').errors.length;
+    const feedback = verified
+      ? 'Учебный сбой обнаружен, после ремонта пакет доставлен.'
+      : 'Сбой и успешный повторный тест не подтверждены. Для восстановления нужен корректный шлюз и рабочий маршрут.';
+    if (submit('routing', 'fault', verified ? 4 : 0, feedback)) faultNote.textContent = feedback;
+  });
   tasks.querySelector('#routing-fault').addEventListener('click', () => {
     resetPlayback();
+    faultSolved = false;
     fault = { address: '192.168.1.254', attempted: false };
     state.hosts.get('pc-01').gateway = fault.address;
     selectDevice(selected);

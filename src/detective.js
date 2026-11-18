@@ -1,7 +1,7 @@
 import { createIncidentState, incidents, inspectPorts, networkIssues, probeIncident, setAccessCable } from './detective-network.js';
 import { interfaceId, networks, routingDevices, routingName } from './routing-network.js';
 
-export function createDetective(panel, view) {
+export function createDetective(panel, view, assessment) {
   const $ = name => panel.querySelector(`#detective-${name}`);
   const selector = $('case');
   const form = $('config');
@@ -180,6 +180,7 @@ export function createDetective(panel, view) {
     }
     entry = sessions.get(id);
     selector.value = id;
+    $('finish').dataset.grade = `detective/${id}`;
     $('symptom').textContent = incident.symptom;
     $('command').textContent = command();
     log.replaceChildren(...entry.logs.map(makeLogItem));
@@ -242,7 +243,10 @@ export function createDetective(panel, view) {
     frame = requestAnimationFrame(tick);
   }
 
-  selector.addEventListener('change', () => open(selector.value));
+  selector.addEventListener('change', () => {
+    open(selector.value);
+    assessment.render();
+  });
   $('reset').addEventListener('click', () => open(incident.id, true));
   $('ports').addEventListener('click', () => {
     entry.scanned.add(entry.selected);
@@ -280,7 +284,13 @@ export function createDetective(panel, view) {
     if (errors.length) {
       entry.latest = 'failure';
       report('Ответа нет. Изучите журнал событий.', 'error');
-      for (const error of errors) record('Диагностика', error, 'error');
+      for (const error of errors) {
+        const detail = assessment.control()
+          ? error.replace('укажите корректную маску /24 (255.255.255.0).', 'маска не соответствует адресному плану.')
+            .replace(' Включите его в настройках маршрутизатора.', '')
+          : error;
+        record('Диагностика', detail, 'error');
+      }
       return;
     }
     playback = { steps, index: 0, started: null };
@@ -293,14 +303,16 @@ export function createDetective(panel, view) {
   });
 
   $('finish').addEventListener('click', () => {
-    if (entry.latest !== 'success') {
-      report('Сначала получите успешный ответ после последнего изменения.', 'error');
-      return;
-    }
-    const problems = networkIssues(entry.state);
-    if (problems.length) {
-      report('Ответ получен, но в сети остались неисправности.', 'error');
-      $('journal').open = true;
+    const latestSuccess = entry.latest === 'success';
+    const problems = latestSuccess ? networkIssues(entry.state) : [];
+    const success = latestSuccess && !problems.length;
+    const message = !latestSuccess ? 'Сначала получите успешный ответ после последнего изменения.'
+      : problems.length ? 'Ответ получен, но в сети остались неисправности.'
+      : 'Диагностика завершена. Связь восстановлена.';
+    if (!assessment.submit('detective', incident.id, success ? 4 : 0, [message, ...problems].join(' '))) return;
+    if (!success) {
+      report(message, 'error');
+      if (problems.length) $('journal').open = true;
       for (const problem of problems) record('Итоговая проверка', problem, 'error');
       return;
     }
