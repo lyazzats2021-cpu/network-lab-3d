@@ -238,3 +238,6 @@ h1 span { color: #25a77c; }
   #packet-questions { grid-template-columns: 1fr; }
   .packet-panel button, .packet-tasks button { min-height: 44px; }
 }
+@media (max-width: 360px) {
+  .lab-nav a { text-align: right; white-space: normal; }
+}
