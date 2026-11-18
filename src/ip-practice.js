@@ -10,7 +10,7 @@ const labels = {
   error: 'Есть ошибки',
 };
 
-export function createIpPractice(panel, getLinks, onUpdate, onProbe, submit) {
+export function createIpPractice(panel, getLinks, onUpdate, onProbe) {
   const saved = new Map();
   const drafts = new Map();
   let selected = null;
@@ -126,12 +126,9 @@ export function createIpPractice(panel, getLinks, onUpdate, onProbe, submit) {
   panel.querySelector('#ip-check').addEventListener('click', () => {
     onProbe([]);
     if (warnUnsaved(computers)) return;
-    const checked = checkAssignment(saved);
-    const errors = [...new Set([...checked.values()].flat())];
-    const title = errors.length ? 'Исправьте IP-адресацию' : 'IP-адресация соответствует плану';
-    if (!submit('ip', 'addresses', (computers.length - checked.size) * 5, [title, ...errors].join(' '))) return;
-    marked = checked;
-    report(title, errors);
+    marked = checkAssignment(saved);
+    const errors = [...marked.values()].flat();
+    report(errors.length ? 'Исправьте IP-адресацию' : 'IP-адресация соответствует плану', errors);
     refresh();
   });
   source.addEventListener('change', clearProbe);

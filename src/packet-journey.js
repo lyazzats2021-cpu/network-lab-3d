@@ -25,7 +25,7 @@ const exercises = [
   },
 ];
 
-function setupExercises(root, assessment) {
+function setupExercises(root) {
   const first = root.querySelector('#packet-task-one');
   const list = root.querySelector('#packet-questions');
   for (const [index, task] of exercises.entries()) {
@@ -46,8 +46,6 @@ function setupExercises(root, assessment) {
     const submit = document.createElement('button');
     submit.type = 'submit';
     submit.textContent = 'Проверить ответ';
-    const id = ['switch', 'cable', 'subnet'][index];
-    submit.dataset.grade = `packet/${id}`;
     const note = document.createElement('p');
     note.setAttribute('role', 'status');
     form.append(group, submit, note);
@@ -58,9 +56,7 @@ function setupExercises(root, assessment) {
         note.textContent = 'Выберите вариант ответа.';
         return;
       }
-      const correct = Number(selected) === task.correct;
-      const feedback = `${correct ? 'Верно.' : 'Проверьте свой ответ.'} ${task.explanation}`;
-      if (assessment.submit('packet', id, correct ? 5 : 0, feedback)) note.textContent = feedback;
+      note.textContent = `${Number(selected) === task.correct ? 'Верно.' : 'Проверьте свой ответ.'} ${task.explanation}`;
     });
     list.append(form);
   }
@@ -74,7 +70,7 @@ function setupExercises(root, assessment) {
   };
 }
 
-export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisual, onSelect, assessment) {
+export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisual, onSelect) {
   const source = panel.querySelector('#packet-source');
   const target = panel.querySelector('#packet-target');
   const speed = panel.querySelector('#packet-speed');
@@ -85,7 +81,7 @@ export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisua
   const journal = panel.querySelector('#packet-log');
   const journalDetails = panel.querySelector('#packet-journal');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const verifyExercise = setupExercises(tasks, assessment);
+  const verifyExercise = setupExercises(tasks);
   let memory = createPacketMemory();
   let signature;
   let lastPair;
@@ -100,7 +96,6 @@ export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisua
     target.add(new Option(portLabel(id), id));
   }
   target.value = 'pc-03';
-  let controlChoices = false;
 
   function endpoints() {
     const settings = getSettings();
@@ -191,19 +186,7 @@ export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisua
     return { settings, links };
   }
 
-  function start(from, to, graded = false) {
-    if (assessment.control() && graded && (!from || !to)) {
-      status.textContent = 'Выберите отправителя и получателя.';
-      return;
-    }
-    if (graded) {
-      const plan = planTransmission(getSettings(), getLinks(), from, to, memory);
-      const correct = !plan.errors.length && from === 'pc-01' && to === 'pc-03';
-      const feedback = correct ? 'Выбрана нужная пара, маршрут доступен.'
-        : ['Задание требует отправки от ПК 01 к ПК 03 по работающему маршруту.', ...plan.errors].join(' ');
-      if (!assessment.submit('packet', 'delivery', correct ? 5 : 0, feedback)) return;
-      if (assessment.control()) tasks.querySelector('#packet-task-one').textContent = feedback;
-    }
+  function start(from, to) {
     stop();
     onVisual(null);
     lastPair = [from, to];
@@ -240,7 +223,7 @@ export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisua
 
   source.addEventListener('change', select);
   target.addEventListener('change', select);
-  send.addEventListener('click', () => start(source.value, target.value, assessment.control()));
+  send.addEventListener('click', () => start(source.value, target.value));
   repeat.addEventListener('click', () => start(...lastPair));
   pause.addEventListener('click', () => {
     paused = !paused;
@@ -259,13 +242,6 @@ export function createPacketJourney(panel, tasks, getSettings, getLinks, onVisua
   controls();
   return {
     enter() {
-      if (assessment.control() && !controlChoices) {
-        for (const picker of [source, target]) {
-          picker.add(new Option('Выберите ПК', ''), 0);
-          picker.value = '';
-        }
-        controlChoices = true;
-      }
       const previous = signature;
       readNetwork();
       if (previous !== signature) select();
