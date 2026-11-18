@@ -15,15 +15,24 @@
           <span class="brand-icon" data-icon="network"></span>
           <span>NETWORK LAB <b>3D</b></span>
         </div>
-        <span class="header-tag"><i></i> Учебная лаборатория</span>
+        <nav class="lab-nav" aria-label="Разделы лаборатории">
+          <a id="overview-link" href="#">Обзор</a>
+          <a id="practice-link" href="#practice">Собери локальную сеть</a>
+        </nav>
       </div>
     </header>
 
     <main class="shell">
-      <div class="intro">
+      <div class="intro" id="overview-intro">
         <p class="eyebrow"><span></span> ЭТАП 01 <b></b> ЗНАКОМСТВО С СЕТЬЮ</p>
         <h1>Путешествие пакета данных<span>.</span></h1>
         <p>Осмотрите лабораторию и узнайте, как компьютеры подключаются к локальной сети.</p>
+      </div>
+
+      <div class="intro" id="practice-intro" hidden>
+        <p class="eyebrow"><span></span> ПРАКТИЧЕСКИЙ УРОВЕНЬ <b></b> ТОПОЛОГИЯ «ЗВЕЗДА»</p>
+        <h1>Собери локальную сеть<span>.</span></h1>
+        <p>Подключите четыре компьютера к одному коммутатору и проверьте схему.</p>
       </div>
 
       <div class="workspace">
@@ -49,7 +58,7 @@
           </div>
         </section>
 
-        <aside class="device-panel" aria-labelledby="panel-heading">
+        <aside class="device-panel" id="overview-panel" aria-labelledby="panel-heading">
           <div class="panel-heading">
             <span class="panel-icon" data-icon="layers"></span>
             <div>
@@ -59,6 +68,35 @@
           </div>
           <div class="device-list" id="device-list" aria-label="Устройства лаборатории"></div>
           <article class="info" id="device-info" aria-live="polite" aria-atomic="true"></article>
+        </aside>
+
+        <aside class="device-panel practice-panel" id="practice-panel" aria-labelledby="practice-heading" hidden>
+          <div class="panel-heading">
+            <span class="panel-icon" data-icon="layers"></span>
+            <div>
+              <h2 id="practice-heading">Подключение</h2>
+              <p id="practice-progress"></p>
+            </div>
+          </div>
+          <p id="practice-guidance" class="practice-guidance" role="status"></p>
+
+          <div class="practice-group">
+            <h3 id="practice-pc-heading">Компьютеры</h3>
+            <div class="practice-grid" id="practice-devices" aria-labelledby="practice-pc-heading" role="group"></div>
+            <button type="button" class="practice-port" id="practice-pc-port"></button>
+          </div>
+
+          <div class="practice-group">
+            <h3 id="practice-switch-heading">Порты коммутатора</h3>
+            <div class="practice-grid" id="practice-switch-ports" aria-labelledby="practice-switch-heading" role="group"></div>
+          </div>
+
+          <ul id="practice-links" class="practice-links" aria-label="Кабельные соединения"></ul>
+          <div class="practice-actions">
+            <button type="button" id="practice-check">Проверить сеть</button>
+            <button type="button" id="practice-reset">Начать уровень заново</button>
+          </div>
+          <div id="practice-feedback" class="practice-feedback" role="status" aria-atomic="true" hidden></div>
         </aside>
       </div>
 

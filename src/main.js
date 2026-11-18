@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { devices } from './devices.js';
-import { createLab } from './lab.js';
+import { createLab, makePracticeCable } from './lab.js';
+import { createPractice } from './practice.js';
+import { computers, portLabel } from './topology.js';
 import './style.css';
 
 const paths = {
@@ -40,6 +42,16 @@ const cameraButtons = [zoomIn, zoomOut, reset];
 
 const buttons = new Map();
 const labels = new Map();
+const practiceLabels = new Map();
+const pcPortMarker = document.createElement('button');
+pcPortMarker.type = 'button';
+pcPortMarker.className = 'marker';
+pcPortMarker.dataset.port = '';
+pcPortMarker.hidden = true;
+pcPortMarker.textContent = 'RJ‑45';
+markers.append(pcPortMarker);
+let isPractice = false;
+let practiceState;
 let selection;
 let viewer;
 
@@ -64,6 +76,29 @@ for (const device of devices) {
   markers.append(marker);
   labels.set(device.id, marker);
 }
+
+const practicePanel = document.querySelector('#practice-panel');
+const practice = createPractice(practicePanel, state => {
+  practiceState = state;
+  for (const [id, label] of practiceLabels) {
+    label.setAttribute('aria-pressed', String(state.selected === id));
+    if (id !== 'switch') label.dataset.connected = String(state.links.some(link => link.includes(id)));
+  }
+  viewer?.updatePractice(state);
+}, () => viewer?.resetCamera());
+
+for (const id of [...computers, 'switch']) {
+  const marker = document.createElement('button');
+  marker.type = 'button';
+  marker.className = 'marker';
+  marker.hidden = true;
+  marker.innerHTML = id === 'switch' ? `${icon('switch')} Коммутатор` : `${icon('monitor')} ${portLabel(id)}`;
+  marker.setAttribute('aria-pressed', 'false');
+  marker.addEventListener('click', () => practice.selectDevice(id));
+  markers.append(marker);
+  practiceLabels.set(id, marker);
+}
+pcPortMarker.addEventListener('click', () => practice.selectPort(practiceState.selected));
 
 function selectDevice(id) {
   if (selection === id) return;
@@ -102,8 +137,15 @@ function initViewer() {
   canvas.setAttribute('aria-label', '3D-лаборатория. Стрелки вращают камеру. Плюс и минус меняют масштаб. Home сбрасывает камеру.');
   host.append(canvas);
 
-  const scene = new THREE.Scene();
-  const { lab, walls, devices: models } = createLab(scene);
+  function makeView(practical) {
+    const scene = new THREE.Scene();
+    return { ...createLab(scene, practical), scene };
+  }
+  const overview = makeView(false);
+  let practiceView;
+  let active = overview;
+  const cables = new Map();
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const camera = new THREE.PerspectiveCamera(36, 1, .1, 100);
   const controls = new OrbitControls(camera, canvas);
   controls.enablePan = false;
@@ -112,13 +154,13 @@ function initViewer() {
   controls.rotateSpeed = .79;
   controls.target.set(0, 1.17, -.18);
 
-  const initialDirection = new THREE.Vector3(.42, .51, 1).normalize();
+  const initialDirection = new THREE.Vector3();
+  const horizontal = new THREE.Vector3();
+  const vertical = new THREE.Vector3();
   const framePoints = [
     [-5.43, -.44, -3.92], [5.43, -.44, -3.92], [-5.43, -.44, 3.92], [5.43, -.44, 3.92],
     [-5.34, 3.9, -3.73], [5.34, 3.9, -3.73], [-5.34, 3.44, .41],
   ].map(point => new THREE.Vector3(...point));
-  const horizontal = new THREE.Vector3().crossVectors(camera.up, initialDirection).normalize();
-  const vertical = new THREE.Vector3().crossVectors(initialDirection, horizontal);
   const relative = new THREE.Vector3();
   const projected = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
@@ -131,6 +173,16 @@ function initViewer() {
   let height = 0;
 
   function resetCamera() {
+    if (isPractice) {
+      controls.target.set(0, 1.12, -.35);
+      initialDirection.set(.26, .96, 1);
+    } else {
+      controls.target.set(0, 1.17, -.18);
+      initialDirection.set(.42, .51, 1);
+    }
+    initialDirection.normalize();
+    horizontal.crossVectors(camera.up, initialDirection).normalize();
+    vertical.crossVectors(initialDirection, horizontal);
     const tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const distance = Math.max(...framePoints.map(point => {
       relative.subVectors(point, controls.target);
@@ -160,21 +212,41 @@ function initViewer() {
     requestRender();
   }
 
-  function render() {
+  function placeLabel(label, anchor, minY = 74) {
+    projected.copy(anchor).project(camera);
+    const x = (projected.x + 1) * width / 2;
+    const y = (1 - projected.y) * height / 2;
+    const edge = isPractice ? 34 : 46;
+    label.hidden = projected.z < -1 || projected.z > 1 || x < edge || x > width - edge || y < minY || y > height - 18;
+    if (!label.hidden) {
+      label.style.left = `${x}px`;
+      label.style.top = `${y}px`;
+    }
+  }
+
+  function render(now) {
     frame = null;
-    walls.back.visible = camera.position.z > -3.65;
-    walls.left.visible = camera.position.x > -5.16;
-    renderer.render(scene, camera);
-    for (const [id, model] of models) {
-      projected.copy(model.anchor).project(camera);
-      const label = labels.get(id);
-      const x = (projected.x + 1) * width / 2;
-      const y = (1 - projected.y) * height / 2;
-      label.hidden = projected.z < -1 || projected.z > 1 || x < 46 || x > width - 46 || y < 74 || y > height - 18;
-      if (!label.hidden) {
-        label.style.left = `${x}px`;
-        label.style.top = `${y}px`;
+    active.walls.back.visible = camera.position.z > -3.65;
+    active.walls.left.visible = camera.position.x > -5.16;
+    if (isPractice) {
+      for (const cable of cables.values()) {
+        const progress = reducedMotion.matches ? 1 : Math.min(1, (now - cable.started) / 360);
+        const count = cable.mesh.geometry.index.count;
+        cable.mesh.geometry.setDrawRange(0, progress >= 1 ? count : Math.floor(count * progress / 48) * 48);
+        if (progress < 1) requestRender();
       }
+    }
+    renderer.render(active.scene, camera);
+    const activeLabels = isPractice ? practiceLabels : labels;
+    for (const [id, model] of active.devices) {
+      placeLabel(activeLabels.get(id), model.anchor);
+    }
+    const selectedPort = active.ports?.get(practiceState.selected);
+    if (selectedPort) {
+      pcPortMarker.setAttribute('aria-label', `${portLabel(practiceState.selected)} · выбрать RJ‑45`);
+      placeLabel(pcPortMarker, selectedPort.endpoint, 55);
+    } else {
+      pcPortMarker.hidden = true;
     }
     canvas.dataset.sceneReady = 'true';
     message.hidden = true;
@@ -199,15 +271,19 @@ function initViewer() {
       -(event.clientY - bounds.top) / bounds.height * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
-    for (const { object } of raycaster.intersectObject(lab, true)) {
+    for (const { object } of raycaster.intersectObject(active.lab, true)) {
       let deviceId;
+      let portId;
       let visible = true;
       for (let node = object; node; node = node.parent) {
         deviceId ??= node.userData.deviceId;
+        portId ??= node.userData.portId;
         visible &&= node.visible;
       }
       if (!visible) continue;
-      if (deviceId) selectDevice(deviceId);
+      if (isPractice && portId) practice.selectPort(portId);
+      else if (isPractice && deviceId) practice.selectDevice(deviceId);
+      else if (deviceId) selectDevice(deviceId);
       break;
     }
   }
@@ -266,8 +342,45 @@ function initViewer() {
   resize();
   return {
     highlight(id) {
-      for (const [modelId, model] of models) {
+      for (const [modelId, model] of overview.devices) {
         model.highlight.emissiveIntensity = modelId === id ? .70 : 0;
+      }
+      requestRender();
+    },
+    showMode() {
+      if (isPractice && !practiceView) practiceView = makeView(true);
+      active = isPractice ? practiceView : overview;
+      for (const label of [...labels.values(), ...practiceLabels.values(), pcPortMarker]) label.hidden = true;
+      renderer.shadowMap.needsUpdate = true;
+      resize();
+      resetCamera();
+      if (isPractice) this.updatePractice(practiceState);
+    },
+    resetCamera,
+    updatePractice({ selected, source, links }) {
+      if (!practiceView) return;
+      const occupied = new Set(links.flat());
+      for (const [id, model] of practiceView.devices) {
+        const connected = id === 'switch' ? links.some(([, end]) => end.startsWith('sw-')) : occupied.has(id);
+        model.highlight.emissive.setHex(connected ? 0x55ffad : 0xffa756);
+        model.highlight.emissiveIntensity = selected === id ? 1.10 : .45;
+      }
+      for (const [id, port] of practiceView.ports) {
+        const color = source === id ? 0xfce07b : occupied.has(id) ? 0x55ffad : 0x3891af;
+        port.border.emissive.setHex(color);
+        port.border.emissiveIntensity = source === id ? 1.3 : .62;
+      }
+      for (const [link, cable] of cables) {
+        if (links.includes(link)) continue;
+        cable.group.removeFromParent();
+        cable.mesh.geometry.dispose();
+        cables.delete(link);
+      }
+      for (const link of links) {
+        if (cables.has(link)) continue;
+        const cable = makePracticeCable(practiceView, ...link);
+        cable.started = performance.now();
+        cables.set(link, cable);
       }
       requestRender();
     },
@@ -278,7 +391,7 @@ function showSceneMessage(text) {
   message.textContent = text;
   message.hidden = false;
   for (const button of cameraButtons) button.disabled = true;
-  for (const label of labels.values()) label.hidden = true;
+  for (const label of [...labels.values(), ...practiceLabels.values(), pcPortMarker]) label.hidden = true;
 }
 
 showSceneMessage('Загрузка 3D-сцены…');
@@ -289,3 +402,25 @@ try {
   showSceneMessage('Не удалось запустить 3D-сцену. Включите WebGL 2 или откройте страницу в другом браузере.');
 }
 selectDevice(devices[0].id);
+
+const overviewPanel = document.querySelector('#overview-panel');
+const overviewIntro = document.querySelector('#overview-intro');
+const practiceIntro = document.querySelector('#practice-intro');
+const overviewLink = document.querySelector('#overview-link');
+const practiceLink = document.querySelector('#practice-link');
+const viewport = document.querySelector('#viewport');
+
+function syncMode() {
+  const shouldPractice = location.hash === '#practice';
+  if (shouldPractice !== isPractice) {
+    isPractice = shouldPractice;
+    overviewIntro.hidden = overviewPanel.hidden = isPractice;
+    practiceIntro.hidden = practicePanel.hidden = !isPractice;
+    viewport.dataset.mode = isPractice ? 'practice' : 'overview';
+    viewer?.showMode();
+  }
+  overviewLink.setAttribute('aria-current', isPractice ? 'false' : 'page');
+  practiceLink.setAttribute('aria-current', isPractice ? 'page' : 'false');
+}
+window.addEventListener('hashchange', syncMode);
+syncMode();

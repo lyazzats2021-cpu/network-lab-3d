@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { portLabel, switchPorts } from './topology.js';
 
 const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 const up = new THREE.Vector3(0, 1, 0);
@@ -181,10 +182,9 @@ function deviceGroup(lab, objects, id, position, color) {
   return device;
 }
 
-function computer(lab, objects, id, x, side, accent) {
-  const z = -1.75;
+function computer(lab, objects, id, x, side, accent, z = -1.75, ports) {
   table(lab, x, z);
-  chair(lab, x - side * .27, .28, accent, side * .19);
+  if (!ports || z < 0) chair(lab, x - side * .27, ports ? -.85 : .28, accent, side * .19);
   const { group, highlight, anchor } = deviceGroup(lab, objects, id, [x, 1.51, z], accent.color);
   const screenX = -side * .29;
   const caseX = side * 1.04;
@@ -219,10 +219,10 @@ function computer(lab, objects, id, x, side, accent) {
     ctx.fillText('ETHERNET / LAN', 49, 79);
     ctx.fillStyle = '#f0fff7';
     ctx.font = 'bold 105px sans-serif';
-    ctx.fillText(side < 0 ? 'ПК 01' : 'ПК 02', 44, 221);
+    ctx.fillText(portLabel(id), 44, 221);
     ctx.fillStyle = '#b3e6de';
     ctx.font = '29px sans-serif';
-    ctx.fillText('●  ПОДКЛЮЧЁН', 49, 302);
+    ctx.fillText(ports ? 'СЕТЕВОЙ АДАПТЕР' : '●  ПОДКЛЮЧЁН', 49, 302);
     ctx.strokeStyle = '#abf3d1';
     ctx.lineWidth = 7;
     ctx.strokeRect(563, 119, 130, 90);
@@ -249,12 +249,31 @@ function computer(lab, objects, id, x, side, accent) {
   }
   block(group, palette.navy, [.21, .083, .31], [screenX + side * .78, .122, .50]);
   block(group, accent, [.027, .014, .100], [screenX + side * .78, .166, .50]);
-  anchor.set(x + screenX, 3.13, z - .19);
+  if (ports) {
+    makePort(group, ports, id, [caseX, .26, .169], .29);
+    anchor.set(x, 3.10, z - .35);
+  } else {
+    anchor.set(x + screenX, 3.13, z - .19);
+  }
   return [x + caseX, 1.97, z - .63];
 }
 
-function networkSwitch(lab, objects) {
-  const z = .56;
+function makePort(device, ports, id, position, width) {
+  const group = new THREE.Group();
+  group.position.set(...position);
+  group.userData.portId = id;
+  device.add(group);
+  const border = material(0x55a8bd, { emissive: 0x2a7387, emissiveIntensity: .45 });
+  block(group, border, [width, .17, .038], [0, 0, .02], false);
+  block(group, palette.black, [width * .68, .102, .032], [0, -.006, .042], false);
+  for (const dx of [-.033, 0, .033]) {
+    block(group, palette.gold, [.014, .018, .009], [dx, .023, .060], false);
+  }
+  const endpoint = group.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0, .066));
+  ports.set(id, { border, endpoint });
+}
+
+function networkSwitch(lab, objects, z = .56, ports) {
   const { group, highlight, anchor } = deviceGroup(lab, objects, 'switch', [0, .94, z], 0x73d59b);
   block(lab, palette.navy, [2.43, .14, 1.41], [0, .077, z]);
   block(lab, palette.dark, [2.22, .78, 1.19], [0, .49, z]);
@@ -269,7 +288,23 @@ function networkSwitch(lab, objects) {
   block(group, palette.navy, [2.15, .32, .91], [0, .19, 0]);
   block(group, highlight, [2.16, .06, .91], [0, .36, 0]);
   block(group, palette.dark, [2.09, .27, .04], [0, .19, .462]);
-  for (let port = 0; port < 8; port++) {
+  if (ports) {
+    for (const [index, id] of switchPorts.entries()) {
+      const x = -.78 + index * .52;
+      makePort(group, ports, id, [x, .17, .483], .34);
+    }
+    graphic(group, [2.06, .20], [0, .400, .34], (ctx, width, height) => {
+      ctx.fillStyle = '#20554c';
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = 'bold 56px sans-serif';
+      ctx.fillStyle = '#f0fff7';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < switchPorts.length; i++) {
+        ctx.fillText(String(i + 1), width * (i + .5) / switchPorts.length, 56);
+      }
+    }).rotation.x = -Math.PI / 2;
+  }
+  for (let port = 0; !ports && port < 8; port++) {
     const x = -.84 + port * .214;
     block(group, palette.steel, [.175, .145, .028], [x, .17, .49]);
     block(group, palette.black, [.125, .096, .022], [x, .17, .508]);
@@ -296,18 +331,28 @@ function cable(lab, surface, points) {
   lab.add(mesh);
   block(lab, surface, [.111, .085, .14], points[0]);
   block(lab, surface, [.111, .085, .15], points.at(-1));
+  return mesh;
 }
 
-export function createLab(scene) {
+export function createLab(scene, practice = false) {
   const lab = new THREE.Group();
   scene.add(lab);
   const walls = makeRoom(lab);
   const devices = new Map();
-  const pc1 = computer(lab, devices, 'pc-01', -2.96, -1, palette.aqua);
-  const pc2 = computer(lab, devices, 'pc-02', 2.96, 1, palette.gold);
-  const [port1, port2] = networkSwitch(lab, devices);
-  cable(lab, palette.aqua, [port1, [-.84, 1.09, 1.33], [-.96, .86, 1.42], [-1.18, .14, 1.49], [-1.47, .065, 1.39], [-2.30, .065, .99], [-3.79, .065, .93], [-4.61, .065, .60], [-4.84, .065, -.37], [-4.83, .065, -2.42], [-4.61, .34, -2.84], [-4.33, 1.54, -2.81], [-4.04, 1.97, -2.58], pc1]);
-  cable(lab, palette.gold, [port2, [-.62, 1.11, 1.39], [-.46, .77, 1.55], [-.19, .16, 1.61], [.17, .065, 1.60], [1.56, .065, 1.45], [2.72, .065, .99], [4.22, .065, .80], [4.79, .065, .21], [4.86, .065, -2.20], [4.65, .30, -2.76], [4.41, 1.45, -2.80], [4.04, 1.97, -2.58], pc2]);
+  const ports = practice ? new Map() : null;
+  if (practice) {
+    computer(lab, devices, 'pc-01', -2.96, 1, palette.aqua, -2.30, ports);
+    computer(lab, devices, 'pc-02', 2.96, -1, palette.gold, -2.30, ports);
+    computer(lab, devices, 'pc-03', -2.96, 1, palette.green, 1.64, ports);
+    computer(lab, devices, 'pc-04', 2.96, -1, palette.teal, 1.64, ports);
+    networkSwitch(lab, devices, -.06, ports);
+  } else {
+    const pc1 = computer(lab, devices, 'pc-01', -2.96, -1, palette.aqua);
+    const pc2 = computer(lab, devices, 'pc-02', 2.96, 1, palette.gold);
+    const [port1, port2] = networkSwitch(lab, devices);
+    cable(lab, palette.aqua, [port1, [-.84, 1.09, 1.33], [-.96, .86, 1.42], [-1.18, .14, 1.49], [-1.47, .065, 1.39], [-2.30, .065, .99], [-3.79, .065, .93], [-4.61, .065, .60], [-4.84, .065, -.37], [-4.83, .065, -2.42], [-4.61, .34, -2.84], [-4.33, 1.54, -2.81], [-4.04, 1.97, -2.58], pc1]);
+    cable(lab, palette.gold, [port2, [-.62, 1.11, 1.39], [-.46, .77, 1.55], [-.19, .16, 1.61], [.17, .065, 1.60], [1.56, .065, 1.45], [2.72, .065, .99], [4.22, .065, .80], [4.79, .065, .21], [4.86, .065, -2.20], [4.65, .30, -2.76], [4.41, 1.45, -2.80], [4.04, 1.97, -2.58], pc2]);
+  }
 
   const plant = new THREE.Group();
   plant.position.set(4.69, 0, -2.99);
@@ -335,5 +380,44 @@ export function createLab(scene) {
   const fill = new THREE.DirectionalLight(0x93dfff, .65);
   fill.position.set(7, 4, -3);
   scene.add(hemi, key, fill);
-  return { lab, walls, devices };
+  return { lab, walls, devices, ports };
+}
+
+const cableColors = [palette.aqua, palette.gold, palette.green, palette.teal];
+
+function computerRoute(point, lane) {
+  const direction = Math.sign(point.x);
+  return [
+    point.toArray(),
+    [point.x, point.y, point.z + .17],
+    [point.x, 1.64, point.z + .79],
+    [point.x, .16, point.z + .88],
+    [direction * lane, .085, point.z + .89],
+  ];
+}
+
+export function makePracticeCable(room, first, second) {
+  const start = room.ports.get(first).endpoint;
+  const end = room.ports.get(second).endpoint;
+  const lane = .86 + Number(first.at(-1)) * .115;
+  const a = computerRoute(start, lane);
+  const b = switchPorts.includes(second)
+    ? [end.toArray(), [end.x, end.y, end.z + .22], [end.x, .16, end.z + .33], [Math.sign(start.x) * lane, .085, end.z + .42]]
+    : computerRoute(end, lane);
+  const endOfA = a.at(-1);
+  const endOfB = b.at(-1);
+  const floor = endOfA[0] * endOfB[0] < 0
+    ? [[endOfA[0], .085, 1.14], [endOfB[0], .085, 1.14]]
+    : [];
+  const group = new THREE.Group();
+  room.lab.add(group);
+  const mesh = cable(group, cableColors[Number(first.at(-1)) - 1], [...a, ...floor, ...b.reverse()]);
+  for (const part of group.children) part.castShadow = false;
+  // Floor routing bends are kept above the floor so each cable remains visible.
+  const positions = mesh.geometry.getAttribute('position');
+  for (let i = 0; i < positions.count; i++) {
+    if (positions.getY(i) < .045) positions.setY(i, .045);
+  }
+  positions.needsUpdate = true;
+  return { group, mesh };
 }
