@@ -7,6 +7,7 @@ import { createIpPractice } from './ip-practice.js';
 import { createPacketJourney } from './packet-journey.js';
 import { createPacketVisual } from './packet-visual.js';
 import { createRoutingPractice } from './routing-practice.js';
+import { createDetective } from './detective.js';
 import { routingDevices, routingName } from './routing-network.js';
 import { computers, portLabel } from './topology.js';
 import './style.css';
@@ -57,6 +58,7 @@ pcPortMarker.hidden = true;
 pcPortMarker.textContent = 'RJ‑45';
 markers.append(pcPortMarker);
 let mode = 'overview';
+const usesRoutingScene = () => mode === 'routing' || mode === 'detective';
 let ipState;
 let packetSender;
 let practiceState;
@@ -117,6 +119,18 @@ const routing = createRoutingPractice(document.querySelector('#routing-panel'), 
   },
 });
 
+const detective = createDetective(document.querySelector('#detective-panel'), {
+  cables: links => viewer?.updateRoutingCables(links),
+  animate: (step, progress, reduced) => viewer?.showRoutingPacket(step, progress, reduced),
+  select: (id, status) => {
+    for (const [item, label] of routingLabels) {
+      label.setAttribute('aria-pressed', String(item === id));
+      label.dataset.link = status.has(item) ? (status.get(item) ? 'up' : 'down') : '';
+    }
+    viewer?.highlightDetectiveDevice(id, status.get(id));
+  },
+});
+
 for (const id of routingDevices) {
   const node = document.createElement('button');
   node.type = 'button';
@@ -126,7 +140,7 @@ for (const id of routingDevices) {
   const name = routingName(id);
   node.textContent = id.startsWith('switch-') ? `SW ${id.at(-1).toUpperCase()}` : id === 'router' ? 'ROUTER' : name;
   node.setAttribute('aria-label', name);
-  node.addEventListener('click', () => routing.selectDevice(id));
+  node.addEventListener('click', () => mode === 'detective' ? detective.selectDevice(id) : routing.selectDevice(id));
   routingLabels.set(id, node);
   markers.append(node);
 }
@@ -220,6 +234,7 @@ function initViewer() {
   let active = overview;
   let routingView;
   let routingVisual;
+  let detectiveSelection;
   const routingCables = new Map();
   const cables = new Map();
   let packetVisual;
@@ -323,7 +338,7 @@ function initViewer() {
     }
     drawProbe(now);
     renderer.render(active.scene, camera);
-    const activeLabels = mode === 'routing' ? routingLabels : mode === 'overview' ? labels : practiceLabels;
+    const activeLabels = usesRoutingScene() ? routingLabels : mode === 'overview' ? labels : practiceLabels;
     for (const [id, model] of active.devices) {
       const label = activeLabels.get(id);
       if (mode === 'ip' && id === 'switch') label.hidden = true;
@@ -388,7 +403,8 @@ function initViewer() {
         visible &&= node.visible;
       }
       if (!visible) continue;
-      if (mode === 'routing' && portId) routing.selectPort(portId, deviceId);
+      if (mode === 'detective' && deviceId) detective.selectDevice(deviceId);
+      else if (mode === 'routing' && portId) routing.selectPort(portId, deviceId);
       else if (mode === 'routing' && deviceId) routing.selectDevice(deviceId);
       else if (mode === 'practice' && portId) practice.selectPort(portId);
       else if (deviceId && mode !== 'overview') selectPracticeDevice(deviceId);
@@ -457,13 +473,13 @@ function initViewer() {
       requestRender();
     },
     showMode() {
-      if (mode === 'routing' && !routingView) routingView = createRoutingLab(new THREE.Scene());
-      if (mode !== 'overview' && mode !== 'routing' && !practiceView) {
+      if (usesRoutingScene() && !routingView) routingView = createRoutingLab(new THREE.Scene());
+      if (mode !== 'overview' && !usesRoutingScene() && !practiceView) {
         practiceView = makeView(true);
         practiceView.scene.add(signal);
       }
       const previous = active;
-      active = mode === 'routing' ? routingView : mode === 'overview' ? overview : practiceView;
+      active = usesRoutingScene() ? routingView : mode === 'overview' ? overview : practiceView;
       for (const label of [...labels.values(), ...practiceLabels.values(), ...routingLabels.values(), pcPortMarker]) label.hidden = true;
       if (previous !== active) {
         renderer.shadowMap.needsUpdate = true;
@@ -483,6 +499,19 @@ function initViewer() {
       for (const link of links) {
         if (!routingCables.has(link)) routingCables.set(link, makeRoutingCable(routingView, ...link));
       }
+      requestRender();
+    },
+    highlightDetectiveDevice(id, linkUp) {
+      const device = routingView?.devices.get(id);
+      if (device) {
+        if (!detectiveSelection) {
+          detectiveSelection = new THREE.Box3Helper(new THREE.Box3(), 0xf5db7b);
+          routingView.scene.add(detectiveSelection);
+        }
+        detectiveSelection.box.setFromObject(device.group).expandByScalar(.05);
+        detectiveSelection.material.color.setHex(linkUp === false ? 0xffc36d : 0x91ecdf);
+      }
+      if (detectiveSelection) detectiveSelection.visible = Boolean(device);
       requestRender();
     },
     showRoutingPacket(step, progress, reduced) {
@@ -554,7 +583,7 @@ try {
 }
 selectDevice(devices[0].id);
 
-const sections = ['overview', 'practice', 'ip', 'packet', 'routing'].map(id => ({
+const sections = ['overview', 'practice', 'ip', 'packet', 'routing', 'detective'].map(id => ({
   id,
   panel: document.querySelector(`#${id}-panel`),
   intro: document.querySelector(`#${id}-intro`),
@@ -570,6 +599,7 @@ function syncMode() {
     if (mode === 'ip') ipPractice.clearProbe();
     if (mode === 'packet') packetJourney.leave();
     if (mode === 'routing') routing.leave();
+    if (mode === 'detective') detective.leave();
     mode = next;
     for (const section of sections) {
       section.panel.hidden = section.intro.hidden = section.id !== mode;
@@ -577,10 +607,11 @@ function syncMode() {
     packetTasks.hidden = mode !== 'packet';
     routingTasks.hidden = mode !== 'routing';
     viewport.dataset.mode = mode;
-    sceneNetworkLabel.textContent = mode === 'routing' ? 'Сети A и B' : 'Локальная сеть';
+    sceneNetworkLabel.textContent = usesRoutingScene() ? 'Сети A и B' : 'Локальная сеть';
     viewer?.showMode();
     if (mode === 'packet') packetJourney.enter();
     else if (mode === 'routing') routing.enter();
+    else if (mode === 'detective') detective.enter();
     else refreshPracticeScene();
   }
   for (const section of sections) {

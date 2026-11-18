@@ -21,6 +21,7 @@
           <a id="ip-link" href="#ip">IP-МАСТЕР 3D</a>
           <a id="packet-link" href="#packet">Путешествие пакета</a>
           <a id="routing-link" href="#routing">Маршрутизатор 3D</a>
+          <a id="detective-link" href="#detective">Сетевой детектив</a>
         </nav>
       </div>
     </header>
@@ -54,6 +55,12 @@
         <p class="eyebrow"><span></span> УРОВЕНЬ 4 <b></b> ДВЕ ПОДСЕТИ</p>
         <h1>Маршрутизатор 3D<span>.</span></h1>
         <p>Соедините две локальные сети, настройте шлюзы и проследите путь пакета.</p>
+      </div>
+
+      <div class="intro" id="detective-intro" hidden>
+        <p class="eyebrow"><span></span> УРОВЕНЬ 5 <b></b> ДИАГНОСТИКА</p>
+        <h1>Сетевой детектив 3D<span>.</span></h1>
+        <p>Проверьте связь, найдите причину сбоя и восстановите работу сети.</p>
       </div>
 
       <div class="workspace">
@@ -221,6 +228,44 @@
               <ol id="routing-log" role="log" aria-label="События маршрутизации" tabindex="0"></ol>
             </details>
           </details>
+        </aside>
+        <aside class="device-panel packet-panel detective-panel" id="detective-panel" aria-labelledby="detective-heading" hidden>
+          <div class="panel-heading">
+            <span class="panel-icon" data-icon="search"></span>
+            <div><h2 id="detective-heading">Найди и устрани неисправность</h2><p id="detective-progress"></p></div>
+          </div>
+          <label for="detective-case">Ситуация <select id="detective-case"></select></label>
+          <p id="detective-symptom"></p>
+          <section class="routing-section" aria-labelledby="detective-tools">
+            <h3 id="detective-tools">Проверка связи</h3>
+            <code id="detective-command"></code>
+            <button type="button" id="detective-ping">Запустить проверку связи</button>
+            <p id="detective-result" role="status"></p>
+          </section>
+          <section class="routing-section" aria-labelledby="detective-equipment">
+            <h3 id="detective-equipment">Состояние устройств</h3>
+            <div id="detective-devices" role="group" aria-label="Устройства для осмотра"></div>
+            <div id="detective-inspection" hidden>
+              <h4 id="detective-device-title"></h4>
+              <div class="practice-grid">
+                <button type="button" id="detective-ports">Проверить порты</button>
+                <button type="button" id="detective-cable" hidden></button>
+              </div>
+              <ul id="detective-port-list" aria-label="Состояние портов"></ul>
+              <details class="routing-section" id="detective-settings">
+                <summary>Сетевые настройки</summary>
+                <form id="detective-config"></form>
+              </details>
+            </div>
+          </section>
+          <details class="routing-section" id="detective-journal" open>
+            <summary>Журнал событий</summary>
+            <ol id="detective-log" role="log" aria-label="События диагностики" tabindex="0"></ol>
+          </details>
+          <div class="practice-grid packet-actions detective-actions">
+            <button type="button" id="detective-finish">Завершить диагностику</button>
+            <button type="button" id="detective-reset">Начать ситуацию заново</button>
+          </div>
         </aside>
       </div>
 
