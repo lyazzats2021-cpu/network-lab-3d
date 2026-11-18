@@ -277,3 +277,44 @@ h1 span { color: #25a77c; }
   .routing-task-grid { grid-template-columns: 1fr; }
   .routing-panel .routing-devices button { min-height: 44px; }
 }
+
+.scene-card:has(#viewport[data-mode="detective"]) { align-self: start; }
+#viewport[data-mode="detective"] { flex: none; height: clamp(465px, 43vw, 620px); }
+.routing-marker[data-link="down"] { border-color: #ffd071; }
+.routing-marker[data-link="down"]::after { content: "!"; color: #ffd071; }
+.routing-marker[data-link="up"]::after { content: "✓"; color: #a0efb3; }
+.routing-marker[aria-pressed="true"][data-link]::after { color: inherit; }
+#detective-symptom { margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.detective-panel h3, .detective-panel h4 { margin-bottom: 7px; color: var(--ink); font-size: 13px; }
+#detective-command { display: block; margin-bottom: 7px; padding: 7px; border-radius: 6px; background: #e9f6f1; color: #20483a; overflow-wrap: anywhere; font-size: 12px; }
+#detective-ping { width: 100%; background: #12674f; color: #fff; }
+#detective-result { margin-top: 6px; padding: 7px; border-radius: 6px; background: #eef5f2; color: #20483a; font-size: 12px; }
+#detective-result[data-kind="error"] { background: #fff2d7; color: #624019; }
+#detective-result[data-kind="success"] { background: #def2e5; color: #205039; }
+#detective-devices { display: flex; gap: 5px; flex-wrap: wrap; }
+#detective-devices button { font-size: 11px; }
+#detective-devices button[data-link="down"] { border-color: #c8913e; }
+#detective-devices button[data-link="up"] { border-color: #73be98; }
+#detective-devices button[aria-pressed="true"] { background: #d9f3e8; outline: 1px solid #168d70; outline-offset: -2px; }
+#detective-devices button:focus-visible { outline-offset: 2px; }
+#detective-inspection { margin-top: 10px; }
+#detective-port-list { padding-left: 14px; margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+#detective-port-list li[data-link="down"] { color: #78521b; }
+#detective-config { display: grid; gap: 6px; }
+#detective-config fieldset { display: grid; gap: 5px; margin: 0; padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; }
+#detective-config legend { font-weight: 700; font-size: 11px; }
+#detective-config label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 6px; }
+#detective-config input[type="checkbox"] { order: -1; width: 18px; min-height: 18px; accent-color: #168d70; }
+#detective-log { max-height: 250px; overflow: auto; list-style: none; padding: 0; margin: 0; overflow-wrap: anywhere; }
+#detective-log li { margin-bottom: 4px; padding: 6px 7px; border-left: 2px solid #69c4cb; background: #f2f9f7; font-size: 11px; line-height: 1.45; }
+#detective-log li[data-kind="error"] { border-color: #ce9c47; background: #fff8e8; }
+#detective-log li[data-kind="success"] { border-color: #69b68b; background: #e5f5eb; }
+.detective-actions { margin-top: 9px; }
+
+@media (max-width: 760px) {
+  #viewport[data-mode="detective"] { min-height: 0; height: clamp(360px, 80vw, 480px); }
+}
+@media (max-width: 480px) {
+  .masthead-inner { flex-wrap: wrap; gap: 4px; padding-block: 7px; }
+  .lab-nav { flex: 0 0 100%; justify-content: flex-start; }
+}
