@@ -144,5 +144,5 @@ export function createIpPractice(panel, getLinks, onUpdate, onProbe) {
   });
 
   refresh();
-  return { selectDevice, clearProbe };
+  return { selectDevice, clearProbe, getSaved: () => new Map(saved) };
 }
