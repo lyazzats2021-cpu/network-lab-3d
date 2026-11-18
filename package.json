@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "check": "node --check src/main.js && node --check src/lab.js && node --check src/devices.js && node --check vite.config.js",
+    "check": "node --check src/main.js && node --check src/lab.js && node --check src/devices.js && node --check src/practice.js && node --check src/topology.js && node --check vite.config.js && node --test",
     "build": "vite build",
     "preview": "vite preview"
   },
